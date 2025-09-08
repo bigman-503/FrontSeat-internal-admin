@@ -84,14 +84,14 @@ export function DashboardSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarContent className="bg-gradient-to-b from-slate-900 via-blue-900 to-slate-800 border-r border-blue-700/50 shadow-2xl">
+    <Sidebar collapsible="icon" className="sidebar-smooth-transition">
+      <SidebarContent className="bg-gradient-to-b from-slate-900 via-blue-900 to-slate-800 border-r border-blue-700/50 shadow-2xl sidebar-smooth-transition">
         {/* Header Section - Fixed Height */}
         <div className="h-16 border-b border-blue-700/30 flex items-center">
           <div className={`flex items-center w-full ${collapsed ? "justify-center" : "justify-between px-4"}`}>
             {!collapsed && (
               <div 
-                className="group flex items-center cursor-pointer space-x-3"
+                className="group flex items-center cursor-pointer space-x-3 sidebar-logo-transition"
                 onClick={handleLogoClick}
               >
                 <div className="relative">
@@ -99,61 +99,54 @@ export function DashboardSidebar() {
                     <span className="text-white font-bold text-sm">FS</span>
                   </div>
                 </div>
-                <div>
-                  <span className="font-bold text-lg text-white">
-                    FrontSeat
-                  </span>
-                  <p className="text-xs text-blue-200/80">Advertiser Portal</p>
+                <div className="sidebar-content-smooth">
+                  <div className="flex flex-col whitespace-nowrap">
+                    <span className="font-bold text-lg text-white">
+                      FrontSeat
+                    </span>
+                    <p className="text-xs text-blue-200/80">Advertiser Portal</p>
+                  </div>
                 </div>
               </div>
             )}
             
             {/* Toggle Button */}
-            {!collapsed && (
-              <button
-                onClick={(e) => toggleSidebar(e)}
-                className="p-1.5 rounded-md hover:bg-blue-800/30 transition-colors"
-                title="Collapse sidebar"
-              >
+            <button
+              onClick={(e) => toggleSidebar(e)}
+              className={`p-1.5 rounded-md hover:bg-blue-800/30 sidebar-toggle-transition ${collapsed ? 'mx-auto' : ''}`}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? (
+                <ChevronRight className="h-5 w-5 text-blue-200" />
+              ) : (
                 <ChevronLeft className="h-4 w-4 text-blue-200" />
-              </button>
-            )}
-            
-            {/* Toggle Button for Collapsed State */}
-            {collapsed && (
-              <button
-                onClick={(e) => toggleSidebar(e)}
-                className="p-1.5 rounded-md hover:bg-blue-800/30 transition-colors"
-                title="Expand sidebar"
-              >
-                <ChevronRight className="h-4 w-4 text-blue-200" />
-              </button>
-            )}
+              )}
+            </button>
           </div>
         </div>
 
         {/* Navigation Section */}
-        <div className="flex-1 px-4 py-4">
-          <SidebarMenu className="space-y-1">
+        <div className={`flex-1 py-4 ${collapsed ? "px-2" : "px-4"}`}>
+          <SidebarMenu className={`space-y-1 ${collapsed ? "flex flex-col items-center" : ""}`}>
             {navigationItems.map((item) => (
-              <SidebarMenuItem key={item.title}>
+              <SidebarMenuItem key={item.title} className={collapsed ? "w-full flex justify-center" : ""}>
                 <SidebarMenuButton
                   asChild
-                  className={`group relative w-full rounded-lg transition-all duration-200 ${
+                  className={`group relative w-full rounded-lg sidebar-nav-transition ${
                     isActive(item.url)
                       ? "bg-blue-500/20 text-white border border-blue-400/30"
                       : "text-blue-100 hover:bg-blue-800/30 hover:text-white"
                   }`}
                 >
-                  <NavLink to={item.url} className={`flex items-center ${collapsed ? "justify-center px-3 py-2" : "px-3 py-2"}`}>
-                    <div className={`${collapsed ? "flex items-center justify-center" : "flex items-center space-x-3"}`}>
+                  <NavLink to={item.url} className={`flex items-center ${collapsed ? "justify-center px-2 py-3 w-full" : "px-3 py-2"}`}>
+                    <div className={`${collapsed ? "flex items-center justify-center w-full" : "flex items-center space-x-3"}`}>
                       <item.icon className={`h-4 w-4 ${isActive(item.url) ? "text-blue-300" : "text-blue-200"}`} />
                       {!collapsed && (
-                        <span className="font-medium text-sm">{item.title}</span>
+                        <span className="font-medium text-sm sidebar-content-smooth">{item.title}</span>
                       )}
                     </div>
                     {!collapsed && isActive(item.url) && (
-                      <div className="ml-auto w-2 h-2 bg-blue-400 rounded-full"></div>
+                      <div className="ml-auto w-2 h-2 bg-blue-400 rounded-full sidebar-content-smooth"></div>
                     )}
                   </NavLink>
                 </SidebarMenuButton>

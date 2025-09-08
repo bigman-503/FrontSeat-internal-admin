@@ -232,4 +232,43 @@ All colors MUST be HSL.
   .text-shadow-lg {
     text-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
   }
+  
+  /* Smooth sidebar animations */
+  .sidebar-smooth-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sidebar-content-smooth {
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+  }
+
+  .sidebar-collapsed .sidebar-content-smooth {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+
+  .sidebar-expanded .sidebar-content-smooth {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  /* Enhanced sidebar width transitions */
+  .sidebar-width-transition {
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Smooth logo transitions */
+  .sidebar-logo-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Smooth navigation item transitions */
+  .sidebar-nav-transition {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Smooth toggle button transitions */
+  .sidebar-toggle-transition {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
 }
