@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow authenticated users to read/write their own advertiser data
+    match /advertisers/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow authenticated users to read/write their own user data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow authenticated users to read/write campaigns (for now, we'll make this more restrictive later)
+    match /campaigns/{campaignId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to read/write analytics data
+    match /analytics/{analyticsId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

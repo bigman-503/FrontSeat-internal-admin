@@ -1,5 +1,5 @@
 import React from "react";
-import { Bell, ChevronDown, Search, User } from "lucide-react";
+import { Bell, ChevronDown, Search, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,8 +11,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function DashboardHeader() {
+  const { advertiser, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   return (
     <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between">
       <div className="flex items-center gap-4">
@@ -43,8 +54,12 @@ export function DashboardHeader() {
                 <User className="h-4 w-4 text-white" />
               </div>
               <div className="text-left hidden md:block">
-                <p className="text-sm font-medium">Sarah Johnson</p>
-                <p className="text-xs text-muted-foreground">Local Café Co.</p>
+                <p className="text-sm font-medium">
+                  {advertiser?.displayName || 'Loading...'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {advertiser?.companyName || 'Loading...'}
+                </p>
               </div>
               <ChevronDown className="h-4 w-4" />
             </Button>
@@ -63,7 +78,11 @@ export function DashboardHeader() {
               Team Management
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem 
+              className="text-destructive cursor-pointer"
+              onClick={handleSignOut}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
               Sign Out
             </DropdownMenuItem>
           </DropdownMenuContent>

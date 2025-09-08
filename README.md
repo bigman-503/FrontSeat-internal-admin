@@ -1,4 +1,90 @@
-# Welcome to your Lovable project
+# FrontSeat Ad Hub
+
+A sophisticated advertising platform for ride-sharing vehicles, built with React, TypeScript, and Firebase.
+
+## 🚀 Quick Start
+
+### 1. Environment Setup
+```bash
+# Set up environment variables
+npm run setup-env
+
+# Verify setup
+npm run verify-setup
+```
+
+### 2. Firebase Configuration
+1. Get your Firebase config from [Firebase Console](https://console.firebase.google.com/)
+2. Update `.env.local` with your Firebase configuration
+3. Enable Email/Password authentication in Firebase Console
+
+### 3. Start Development
+```bash
+npm run dev
+```
+
+## 📚 Documentation
+
+- [Firebase Setup Guide](FIREBASE_SETUP.md) - Complete Firebase configuration
+- [Environment Setup](ENV_SETUP.md) - Environment variables guide
+- [Database Schema](database_schema.txt) - Complete database design
+
+## 🛠️ Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run setup-env` - Set up environment variables
+- `npm run verify-setup` - Verify project setup
+- `npm run lint` - Run ESLint
+
+## 🏗️ Project Structure
+
+```
+src/
+├── components/          # Reusable UI components
+├── contexts/           # React contexts (Auth, etc.)
+├── firebase/           # Firebase configuration and utilities
+├── pages/              # Page components
+├── hooks/              # Custom React hooks
+└── lib/                # Utility functions
+```
+
+## 🔐 Authentication
+
+The app includes a complete authentication system with:
+- Email/Password sign up and sign in
+- Protected routes
+- User context management
+- Advertiser profile creation
+
+## 🎨 UI Components
+
+Built with shadcn/ui and Tailwind CSS:
+- Glassmorphism design
+- Responsive layout
+- Dark theme support
+- Smooth animations
+
+## 📊 Features
+
+- **Campaign Management**: Create, edit, and manage advertising campaigns
+- **Analytics Dashboard**: Real-time metrics and KPIs
+- **User Management**: Multi-user advertiser accounts
+- **Responsive Design**: Works on all devices
+
+## 🔧 Technologies
+
+- **Frontend**: React 18, TypeScript, Vite
+- **UI**: shadcn/ui, Tailwind CSS, Lucide React
+- **Backend**: Firebase (Auth, Firestore, Storage)
+- **State Management**: React Context, TanStack Query
+- **Routing**: React Router DOM
+
+## 📞 Support
+
+For setup issues or questions, check the documentation files or run `npm run verify-setup` to diagnose problems.
+
+---
 
 ## Project info
 
