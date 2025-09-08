@@ -7,6 +7,8 @@ import {
   Settings,
   Target,
   Users,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   Sidebar,
@@ -49,9 +51,16 @@ const navigationItems = [
 ];
 
 export function DashboardSidebar() {
-  const { state } = useSidebar();
+  const { state, setOpen, open } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+
+  const toggleSidebar = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Toggle clicked! Current state:', { open, collapsed, state });
+    setOpen(!open);
+  };
 
   const isActive = (path: string) => {
     if (path === "/") {
@@ -68,46 +77,90 @@ export function DashboardSidebar() {
     return `${baseClasses} hover:bg-muted`;
   };
 
+  const handleLogoClick = () => {
+    if (collapsed) {
+      setOpen(true);
+    }
+  };
+
   return (
-    <Sidebar className={collapsed ? "w-16" : "w-64"} collapsible="icon">
-      <SidebarContent className="bg-card border-r border-border">
-        <div className="p-4">
-          <div className="group flex items-center space-x-3 cursor-pointer">
-            <div className="relative">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary via-blue-500 to-primary rounded-xl flex items-center justify-center shadow-2xl group-hover:shadow-primary/30 transition-all duration-500 group-hover:scale-110">
-                <span className="text-white font-bold text-lg">FS</span>
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-              <div className="absolute -inset-1 bg-gradient-to-br from-primary/30 to-blue-500/30 rounded-xl blur opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            </div>
+    <Sidebar collapsible="icon">
+      <SidebarContent className="bg-gradient-to-b from-slate-900 via-blue-900 to-slate-800 border-r border-blue-700/50 shadow-2xl">
+        {/* Header Section - Fixed Height */}
+        <div className="h-16 border-b border-blue-700/30 flex items-center">
+          <div className={`flex items-center w-full ${collapsed ? "justify-center" : "justify-between px-4"}`}>
             {!collapsed && (
-              <div>
-                <span className="font-bold text-xl md:text-2xl bg-gradient-to-r from-white via-white to-blue-200 bg-clip-text text-transparent group-hover:from-primary group-hover:to-blue-400 transition-all duration-500">
-                  FrontSeat
-                </span>
-                <p className="text-xs text-muted-foreground">Advertiser Portal</p>
+              <div 
+                className="group flex items-center cursor-pointer space-x-3"
+                onClick={handleLogoClick}
+              >
+                <div className="relative">
+                  <div className="w-8 h-8 bg-gradient-to-br from-primary via-blue-500 to-primary rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-primary/30 transition-all duration-300 group-hover:scale-105">
+                    <span className="text-white font-bold text-sm">FS</span>
+                  </div>
+                </div>
+                <div>
+                  <span className="font-bold text-lg text-white">
+                    FrontSeat
+                  </span>
+                  <p className="text-xs text-blue-200/80">Advertiser Portal</p>
+                </div>
               </div>
+            )}
+            
+            {/* Toggle Button */}
+            {!collapsed && (
+              <button
+                onClick={(e) => toggleSidebar(e)}
+                className="p-1.5 rounded-md hover:bg-blue-800/30 transition-colors"
+                title="Collapse sidebar"
+              >
+                <ChevronLeft className="h-4 w-4 text-blue-200" />
+              </button>
+            )}
+            
+            {/* Toggle Button for Collapsed State */}
+            {collapsed && (
+              <button
+                onClick={(e) => toggleSidebar(e)}
+                className="p-1.5 rounded-md hover:bg-blue-800/30 transition-colors"
+                title="Expand sidebar"
+              >
+                <ChevronRight className="h-4 w-4 text-blue-200" />
+              </button>
             )}
           </div>
         </div>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className={getNavClasses(item.url)}>
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Navigation Section */}
+        <div className="flex-1 px-4 py-4">
+          <SidebarMenu className="space-y-1">
+            {navigationItems.map((item) => (
+              <SidebarMenuItem key={item.title}>
+                <SidebarMenuButton
+                  asChild
+                  className={`group relative w-full rounded-lg transition-all duration-200 ${
+                    isActive(item.url)
+                      ? "bg-blue-500/20 text-white border border-blue-400/30"
+                      : "text-blue-100 hover:bg-blue-800/30 hover:text-white"
+                  }`}
+                >
+                  <NavLink to={item.url} className={`flex items-center ${collapsed ? "justify-center px-3 py-2" : "px-3 py-2"}`}>
+                    <div className={`${collapsed ? "flex items-center justify-center" : "flex items-center space-x-3"}`}>
+                      <item.icon className={`h-4 w-4 ${isActive(item.url) ? "text-blue-300" : "text-blue-200"}`} />
+                      {!collapsed && (
+                        <span className="font-medium text-sm">{item.title}</span>
+                      )}
+                    </div>
+                    {!collapsed && isActive(item.url) && (
+                      <div className="ml-auto w-2 h-2 bg-blue-400 rounded-full"></div>
+                    )}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </div>
       </SidebarContent>
     </Sidebar>
   );
