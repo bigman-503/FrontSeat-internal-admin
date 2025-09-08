@@ -113,13 +113,13 @@ export function DashboardSidebar() {
             {/* Toggle Button */}
             <button
               onClick={(e) => toggleSidebar(e)}
-              className={`p-1.5 rounded-md hover:bg-blue-800/30 sidebar-toggle-transition ${collapsed ? 'mx-auto' : ''}`}
+              className={`p-1.5 rounded-md hover:bg-blue-800/30 sidebar-toggle-transition sidebar-hover-smooth ${collapsed ? 'mx-auto' : ''}`}
               title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {collapsed ? (
-                <ChevronRight className="h-5 w-5 text-blue-200" />
+                <ChevronRight className="h-5 w-5 text-blue-200 sidebar-icon-transition" />
               ) : (
-                <ChevronLeft className="h-4 w-4 text-blue-200" />
+                <ChevronLeft className="h-4 w-4 text-blue-200 sidebar-icon-transition" />
               )}
             </button>
           </div>
@@ -128,11 +128,15 @@ export function DashboardSidebar() {
         {/* Navigation Section */}
         <div className={`flex-1 py-4 ${collapsed ? "px-2" : "px-4"}`}>
           <SidebarMenu className={`space-y-1 ${collapsed ? "flex flex-col items-center" : ""}`}>
-            {navigationItems.map((item) => (
-              <SidebarMenuItem key={item.title} className={collapsed ? "w-full flex justify-center" : ""}>
+            {navigationItems.map((item, index) => (
+              <SidebarMenuItem 
+                key={item.title} 
+                className={collapsed ? "w-full flex justify-center" : ""}
+                style={{ '--item-index': index } as React.CSSProperties}
+              >
                 <SidebarMenuButton
                   asChild
-                  className={`group relative w-full rounded-lg sidebar-nav-transition ${
+                  className={`group relative w-full rounded-lg sidebar-nav-transition sidebar-nav-item ${
                     isActive(item.url)
                       ? "bg-blue-500/20 text-white border border-blue-400/30"
                       : "text-blue-100 hover:bg-blue-800/30 hover:text-white"
@@ -140,7 +144,7 @@ export function DashboardSidebar() {
                 >
                   <NavLink to={item.url} className={`flex items-center ${collapsed ? "justify-center px-2 py-3 w-full" : "px-3 py-2"}`}>
                     <div className={`${collapsed ? "flex items-center justify-center w-full" : "flex items-center space-x-3"}`}>
-                      <item.icon className={`h-4 w-4 ${isActive(item.url) ? "text-blue-300" : "text-blue-200"}`} />
+                      <item.icon className={`h-4 w-4 sidebar-icon-transition ${isActive(item.url) ? "text-blue-300" : "text-blue-200"}`} />
                       {!collapsed && (
                         <span className="font-medium text-sm sidebar-content-smooth">{item.title}</span>
                       )}

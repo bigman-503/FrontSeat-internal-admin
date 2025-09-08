@@ -233,42 +233,62 @@ All colors MUST be HSL.
     text-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
   }
   
-  /* Smooth sidebar animations */
+  /* Ultra-smooth sidebar animations */
   .sidebar-smooth-transition {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 
   .sidebar-content-smooth {
-    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+    transition: opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
+                transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 
   .sidebar-collapsed .sidebar-content-smooth {
     opacity: 0;
-    transform: translateX(-10px);
+    transform: translateX(-15px) scale(0.95);
+    width: 0;
   }
 
   .sidebar-expanded .sidebar-content-smooth {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateX(0) scale(1);
+    width: auto;
   }
 
   /* Enhanced sidebar width transitions */
   .sidebar-width-transition {
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 
   /* Smooth logo transitions */
   .sidebar-logo-transition {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 
   /* Smooth navigation item transitions */
   .sidebar-nav-transition {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 
   /* Smooth toggle button transitions */
   .sidebar-toggle-transition {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  /* Staggered animation for navigation items */
+  .sidebar-nav-item {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition-delay: calc(var(--item-index) * 50ms);
+  }
+
+  /* Smooth icon transitions */
+  .sidebar-icon-transition {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  /* Enhanced hover effects */
+  .sidebar-hover-smooth {
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 }
