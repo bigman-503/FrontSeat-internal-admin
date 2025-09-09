@@ -7,7 +7,9 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { DashboardLayout } from "./components/layout/dashboard-layout";
 import Dashboard from "./pages/Dashboard";
-import Campaigns from "./pages/Campaigns";
+import Devices from "./pages/Devices";
+import FleetStatus from "./pages/FleetStatus";
+import Locations from "./pages/Locations";
 import Analytics from "./pages/Analytics";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -29,9 +31,10 @@ const App = () => (
               </ProtectedRoute>
             }>
               <Route index element={<Dashboard />} />
-              <Route path="campaigns" element={<Campaigns />} />
+              <Route path="devices" element={<Devices />} />
+              <Route path="fleet-status" element={<FleetStatus />} />
+              <Route path="locations" element={<Locations />} />
               <Route path="analytics" element={<Analytics />} />
-              <Route path="audience" element={<Dashboard />} />
               <Route path="settings" element={<Dashboard />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

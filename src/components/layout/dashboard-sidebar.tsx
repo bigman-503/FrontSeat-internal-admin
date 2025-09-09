@@ -2,11 +2,12 @@ import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   BarChart3,
-  Megaphone,
+  Smartphone,
+  MapPin,
   PieChart,
   Settings,
-  Target,
-  Users,
+  Activity,
+  Wifi,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -29,19 +30,24 @@ const navigationItems = [
     icon: BarChart3,
   },
   {
-    title: "Campaigns",
-    url: "/campaigns",
-    icon: Megaphone,
+    title: "Devices",
+    url: "/devices",
+    icon: Smartphone,
+  },
+  {
+    title: "Fleet Status",
+    url: "/fleet-status",
+    icon: Activity,
+  },
+  {
+    title: "Locations",
+    url: "/locations",
+    icon: MapPin,
   },
   {
     title: "Analytics",
     url: "/analytics",
     icon: PieChart,
-  },
-  {
-    title: "Audience",
-    url: "/audience",
-    icon: Users,
   },
   {
     title: "Settings",
@@ -104,7 +110,7 @@ export function DashboardSidebar() {
                     <span className="font-bold text-lg text-white">
                       FrontSeat
                     </span>
-                    <p className="text-xs text-blue-200/80">Advertiser Portal</p>
+                    <p className="text-xs text-blue-200/80">Fleet Management</p>
                   </div>
                 </div>
               </div>

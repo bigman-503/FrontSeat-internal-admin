@@ -16,7 +16,6 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [companyName, setCompanyName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -110,7 +109,7 @@ export default function Auth() {
           setLoading(false);
           return;
         }
-        await signUp(email, password, displayName, companyName);
+        await signUp(email, password, displayName);
         
         // Show success message for sign-up
         setSignUpSuccess(true);
@@ -121,7 +120,6 @@ export default function Auth() {
         setPassword('');
         setConfirmPassword('');
         setDisplayName('');
-        setCompanyName('');
         
         // Switch to sign-in tab after a delay
         setTimeout(() => {
@@ -141,7 +139,6 @@ export default function Auth() {
     setPassword('');
     setConfirmPassword('');
     setDisplayName('');
-    setCompanyName('');
     setError('');
   };
 
@@ -242,24 +239,6 @@ export default function Auth() {
                             className="bg-white/10 border-white/20 text-white placeholder:text-gray-300 pl-10 focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/20 transition-all duration-200"
                           />
                           <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="companyName" className="text-white flex items-center gap-2">
-                          <Building2 className="h-4 w-4" />
-                          Company Name
-                        </Label>
-                        <div className="relative">
-                          <Input
-                            id="companyName"
-                            type="text"
-                            value={companyName}
-                            onChange={(e) => setCompanyName(e.target.value)}
-                            placeholder="Acme Corp"
-                            required={!isSignIn}
-                            className="bg-white/10 border-white/20 text-white placeholder:text-gray-300 pl-10 focus:border-blue-400/50 focus:ring-2 focus:ring-blue-400/20 transition-all duration-200"
-                          />
-                          <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         </div>
                       </div>
                     </>

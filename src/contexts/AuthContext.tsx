@@ -55,9 +55,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return unsubscribe;
   }, []);
 
-  const signUp = async (email: string, password: string, displayName: string, companyName: string) => {
+  const signUp = async (email: string, password: string, displayName: string) => {
     const { signUpAdvertiser } = await import('../firebase/auth');
-    await signUpAdvertiser(email, password, displayName, companyName);
+    await signUpAdvertiser(email, password, displayName);
   };
 
   const signIn = async (email: string, password: string) => {

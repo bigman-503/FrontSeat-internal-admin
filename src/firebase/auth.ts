@@ -16,7 +16,6 @@ export interface AdvertiserUser {
   uid: string;
   email: string;
   displayName: string;
-  companyName: string;
   role: 'admin' | 'manager' | 'viewer';
   advertiserId: string;
   createdAt: Date;
@@ -27,8 +26,7 @@ export interface AdvertiserUser {
 export const signUpAdvertiser = async (
   email: string,
   password: string,
-  displayName: string,
-  companyName: string
+  displayName: string
 ): Promise<AdvertiserUser> => {
   try {
     // Create user with email and password
@@ -52,7 +50,6 @@ export const signUpAdvertiser = async (
       uid: user.uid,
       email: user.email,
       displayName: displayName,
-      companyName: companyName,
       role: 'admin' as const,
       advertiserId: advertiserId,
       createdAt: new Date(),

@@ -13,95 +13,95 @@ import {
 } from "@/components/ui/table";
 import {
   BarChart,
-  Eye,
-  MousePointer,
-  QrCode,
+  Smartphone,
+  Wifi,
+  Battery,
   TrendingUp,
-  Users,
+  Activity,
   MapPin,
   Plus,
   Play,
   Pause,
   MoreHorizontal,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
+import { mockDevices, mockFleetMetrics } from "@/data/mockDevices";
+import { Device } from "@/types/device";
 
-// Mock data for demonstration
+// Fleet metrics for demonstration
 const metrics = [
   {
-    title: "Total Impressions",
-    value: "247,832",
-    change: "+12.5% from last month",
-    changeType: "positive" as const,
-    icon: <Eye className="h-5 w-5" />,
+    title: "Total Devices",
+    value: mockFleetMetrics.totalDevices.toString(),
+    change: "All devices in fleet",
+    changeType: "neutral" as const,
+    icon: <Smartphone className="h-5 w-5" />,
     variant: "primary" as const,
   },
   {
-    title: "Unique Riders Reached",
-    value: "18,429",
-    change: "+8.2% from last month",
+    title: "Online Devices",
+    value: `${mockFleetMetrics.onlineDevices}/${mockFleetMetrics.totalDevices}`,
+    change: `${Math.round((mockFleetMetrics.onlineDevices / mockFleetMetrics.totalDevices) * 100)}% online`,
     changeType: "positive" as const,
-    icon: <Users className="h-5 w-5" />,
+    icon: <Wifi className="h-5 w-5" />,
     variant: "success" as const,
   },
   {
-    title: "Total Engagements",
-    value: "9,847",
-    change: "+15.7% from last month",
-    changeType: "positive" as const,
-    icon: <MousePointer className="h-5 w-5" />,
-    variant: "info" as const,
+    title: "Average Battery",
+    value: `${mockFleetMetrics.averageBatteryLevel.toFixed(1)}%`,
+    change: `${mockFleetMetrics.lowBatteryDevices} devices need charging`,
+    changeType: mockFleetMetrics.averageBatteryLevel < 30 ? "negative" as const : "positive" as const,
+    icon: <Battery className="h-5 w-5" />,
+    variant: mockFleetMetrics.averageBatteryLevel < 30 ? "destructive" as const : "info" as const,
   },
   {
-    title: "Conversion Rate",
-    value: "3.8%",
-    change: "+0.3% from last month",
+    title: "Average Uptime",
+    value: `${mockFleetMetrics.averageUptime.toFixed(1)}h`,
+    change: "Last 24 hours",
     changeType: "positive" as const,
-    icon: <TrendingUp className="h-5 w-5" />,
+    icon: <Activity className="h-5 w-5" />,
     variant: "warning" as const,
   },
 ];
 
-const recentCampaigns = [
-  {
-    id: 1,
-    name: "Summer Coffee Special",
-    status: "Active",
-    impressions: "45,234",
-    engagement: "1,847",
-    budget: "$2,500",
-    remaining: "$1,200",
-  },
-  {
-    id: 2,
-    name: "Happy Hour Promotion",
-    status: "Paused",
-    impressions: "23,891",
-    engagement: "892",
-    budget: "$1,800",
-    remaining: "$450",
-  },
-  {
-    id: 3,
-    name: "New Menu Launch",
-    status: "Active",
-    impressions: "67,123",
-    engagement: "2,934",
-    budget: "$3,200",
-    remaining: "$800",
-  },
-];
+// Recent device activity
+const recentDevices = mockDevices.slice(0, 4);
 
-const getStatusBadge = (status: string) => {
-  switch (status) {
-    case "Active":
-      return <Badge className="bg-dashboard-success text-dashboard-success-foreground">Active</Badge>;
-    case "Paused":
-      return <Badge variant="secondary">Paused</Badge>;
-    case "Completed":
-      return <Badge variant="outline">Completed</Badge>;
-    default:
-      return <Badge variant="secondary">{status}</Badge>;
-  }
+const getStatusBadge = (device: Device) => {
+  const statusConfig = {
+    online: { variant: "default" as const, label: "Online", icon: <CheckCircle className="h-3 w-3" /> },
+    offline: { variant: "destructive" as const, label: "Offline", icon: <XCircle className="h-3 w-3" /> },
+    low_battery: { variant: "secondary" as const, label: "Low Battery", icon: <AlertTriangle className="h-3 w-3" /> },
+    error: { variant: "destructive" as const, label: "Error", icon: <XCircle className="h-3 w-3" /> },
+    maintenance: { variant: "outline" as const, label: "Maintenance", icon: <AlertTriangle className="h-3 w-3" /> },
+  };
+  
+  const config = statusConfig[device.status] || statusConfig.offline;
+  return (
+    <Badge variant={config.variant} className="flex items-center gap-1">
+      {config.icon}
+      {config.label}
+    </Badge>
+  );
+};
+
+const getBatteryColor = (level: number) => {
+  if (level > 50) return "text-green-500";
+  if (level > 20) return "text-yellow-500";
+  return "text-red-500";
+};
+
+const formatLastSeen = (lastSeen: string) => {
+  const now = new Date();
+  const lastSeenDate = new Date(lastSeen);
+  const diffInMinutes = Math.floor((now.getTime() - lastSeenDate.getTime()) / (1000 * 60));
+  
+  if (diffInMinutes < 1) return "Just now";
+  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+  if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+  return `${Math.floor(diffInMinutes / 1440)}d ago`;
 };
 
 export default function Dashboard() {
@@ -118,15 +118,15 @@ export default function Dashboard() {
       <div className="flex items-center justify-between relative">
         <div className="space-y-2">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground via-foreground to-foreground/80 bg-clip-text text-transparent">
-            Dashboard
+            Fleet Dashboard
           </h1>
           <p className="text-muted-foreground text-lg">
-            Welcome back! Here's what's happening with your campaigns.
+            Fleet management overview - Monitor your tablet devices in real-time.
           </p>
         </div>
         <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 px-6 py-3 rounded-xl">
           <Plus className="h-5 w-5 mr-2" />
-          New Campaign
+          Add Device
         </Button>
       </div>
 
@@ -147,17 +147,17 @@ export default function Dashboard() {
 
       {/* Charts and Tables Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Performance Chart */}
+        {/* Fleet Status Chart */}
         <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-xl">
               <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl text-white">
                 <BarChart className="h-5 w-5" />
               </div>
-              Performance Trends
+              Fleet Status Overview
             </CardTitle>
             <CardDescription className="text-base">
-              Impressions and engagements over the last 30 days
+              Device status and battery levels across your fleet
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -173,47 +173,44 @@ export default function Dashboard() {
                 <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full flex items-center justify-center">
                   <BarChart className="h-8 w-8 text-blue-600" />
                 </div>
-                <p className="text-muted-foreground font-medium">Interactive Chart Coming Soon</p>
-                <p className="text-sm text-muted-foreground/70">Real-time data visualization</p>
+                <p className="text-muted-foreground font-medium">Fleet Analytics Coming Soon</p>
+                <p className="text-sm text-muted-foreground/70">Real-time device monitoring</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Geographic Reach */}
+        {/* Device Locations */}
         <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-xl">
               <div className="p-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl text-white">
                 <MapPin className="h-5 w-5" />
               </div>
-              Geographic Reach
+              Device Locations
             </CardTitle>
             <CardDescription className="text-base">
-              Top performing neighborhoods and cities
+              Current locations of your fleet devices
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { location: "Downtown", impressions: "89,234", engagement: "12.4%", color: "from-blue-500 to-blue-600" },
-                { location: "University District", impressions: "67,891", engagement: "9.8%", color: "from-purple-500 to-purple-600" },
-                { location: "Tech Corridor", impressions: "54,123", engagement: "15.2%", color: "from-cyan-500 to-cyan-600" },
-                { location: "Arts Quarter", impressions: "34,567", engagement: "8.9%", color: "from-pink-500 to-pink-600" },
-              ].map((area, index) => (
-                <div key={index} className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-900/50 hover:from-gray-100/70 hover:to-gray-200/70 dark:hover:from-gray-700/70 dark:hover:to-gray-800/70 transition-all duration-300">
+              {mockDevices.slice(0, 4).map((device, index) => (
+                <div key={device.deviceId} className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-900/50 hover:from-gray-100/70 hover:to-gray-200/70 dark:hover:from-gray-700/70 dark:hover:to-gray-800/70 transition-all duration-300">
                   <div className="flex items-center space-x-3">
-                    <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${area.color}`}></div>
+                    <div className={`w-3 h-3 rounded-full ${device.isOnline ? 'bg-green-500' : 'bg-red-500'} ${device.isOnline ? 'animate-pulse' : ''}`}></div>
                     <div>
-                      <p className="font-semibold text-foreground group-hover:text-blue-600 transition-colors">{area.location}</p>
-                      <p className="text-sm text-muted-foreground">{area.impressions} impressions</p>
+                      <p className="font-semibold text-foreground group-hover:text-blue-600 transition-colors">{device.deviceName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {device.location.latitude.toFixed(4)}, {device.location.longitude.toFixed(4)}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge className={`bg-gradient-to-r ${area.color} text-white border-0 shadow-lg`}>
-                      {area.engagement}
+                    <Badge className={`${device.isOnline ? 'bg-green-500' : 'bg-red-500'} text-white border-0 shadow-lg`}>
+                      {device.isOnline ? 'Online' : 'Offline'}
                     </Badge>
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <div className={`w-2 h-2 rounded-full ${device.isOnline ? 'bg-emerald-500' : 'bg-red-500'} ${device.isOnline ? 'animate-pulse' : ''}`}></div>
                   </div>
                 </div>
               ))}
@@ -222,17 +219,17 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Recent Campaigns */}
+      {/* Recent Device Activity */}
       <Card className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-3 text-xl">
             <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl text-white">
-              <QrCode className="h-5 w-5" />
+              <Smartphone className="h-5 w-5" />
             </div>
-            Recent Campaigns
+            Recent Device Activity
           </CardTitle>
           <CardDescription className="text-base">
-            Your latest campaign performance and status
+            Latest device status updates and performance
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -240,30 +237,43 @@ export default function Dashboard() {
             <Table>
               <TableHeader className="bg-gradient-to-r from-gray-50/80 to-gray-100/80 dark:from-gray-800/80 dark:to-gray-900/80">
                 <TableRow className="border-gray-200/50 dark:border-gray-700/50">
-                  <TableHead className="font-semibold text-foreground">Campaign Name</TableHead>
+                  <TableHead className="font-semibold text-foreground">Device Name</TableHead>
                   <TableHead className="font-semibold text-foreground">Status</TableHead>
-                  <TableHead className="font-semibold text-foreground">Impressions</TableHead>
-                  <TableHead className="font-semibold text-foreground">Engagements</TableHead>
-                  <TableHead className="font-semibold text-foreground">Budget</TableHead>
-                  <TableHead className="font-semibold text-foreground">Remaining</TableHead>
+                  <TableHead className="font-semibold text-foreground">Battery</TableHead>
+                  <TableHead className="font-semibold text-foreground">Network</TableHead>
+                  <TableHead className="font-semibold text-foreground">Last Seen</TableHead>
+                  <TableHead className="font-semibold text-foreground">Uptime</TableHead>
                   <TableHead className="w-[100px] font-semibold text-foreground">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentCampaigns.map((campaign, index) => (
-                  <TableRow key={campaign.id} className="group hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 dark:hover:from-gray-800/50 dark:hover:to-gray-700/50 transition-all duration-300 border-gray-200/50 dark:border-gray-700/50">
+                {recentDevices.map((device, index) => (
+                  <TableRow key={device.deviceId} className="group hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 dark:hover:from-gray-800/50 dark:hover:to-gray-700/50 transition-all duration-300 border-gray-200/50 dark:border-gray-700/50">
                     <TableCell className="font-semibold text-foreground group-hover:text-blue-600 transition-colors">
-                      {campaign.name}
+                      {device.deviceName}
                     </TableCell>
-                    <TableCell>{getStatusBadge(campaign.status)}</TableCell>
-                    <TableCell className="font-medium text-foreground">{campaign.impressions}</TableCell>
-                    <TableCell className="font-medium text-foreground">{campaign.engagement}</TableCell>
-                    <TableCell className="font-medium text-emerald-600">{campaign.budget}</TableCell>
-                    <TableCell className="font-medium text-amber-600">{campaign.remaining}</TableCell>
+                    <TableCell>{getStatusBadge(device)}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Battery className="h-4 w-4" />
+                        <span className={`${getBatteryColor(device.batteryLevel)}`}>
+                          {device.batteryLevel}%
+                        </span>
+                        {device.isCharging && <span className="text-green-500">⚡</span>}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium capitalize">
+                      <div className="flex items-center gap-2">
+                        <Wifi className="h-4 w-4" />
+                        {device.networkStatus.type}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium text-foreground">{formatLastSeen(device.lastSeen)}</TableCell>
+                    <TableCell className="font-medium text-foreground">{device.uptime || 0}h</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Button variant="ghost" size="icon" className="hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors">
-                          {campaign.status === "Active" ? (
+                          {device.isOnline ? (
                             <Pause className="h-4 w-4 text-red-500" />
                           ) : (
                             <Play className="h-4 w-4 text-emerald-500" />
