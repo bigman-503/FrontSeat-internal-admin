@@ -299,7 +299,12 @@ export class DeviceService {
       : 0;
     
     const averageUptime = devices.length > 0 
-      ? devices.reduce((sum, d) => sum + d.uptime, 0) / devices.length 
+      ? devices.reduce((sum, d) => {
+          // Convert uptime from milliseconds to hours
+          const uptimeInHours = d.uptime / (1000 * 60 * 60);
+          console.log(`🔍 Device ${d.deviceId}: Raw uptime ${d.uptime}ms = ${uptimeInHours.toFixed(2)} hours`);
+          return sum + uptimeInHours;
+        }, 0) / devices.length 
       : 0;
 
     return {

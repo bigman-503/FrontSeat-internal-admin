@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { useDevices } from "@/hooks/useDevices";
 import { Device } from "@/types/device";
+import { GoogleMap } from "@/components/GoogleMap";
 
 // Helper function to create metrics array
 const createMetrics = (fleetMetrics: any) => [
@@ -210,20 +211,101 @@ export default function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-64 bg-gradient-to-br from-gray-50/50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-900/50 rounded-xl flex items-center justify-center relative overflow-hidden">
-              {/* Animated background pattern */}
-              <div className="absolute inset-0 opacity-10">
-                <div className="absolute top-4 left-4 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                <div className="absolute top-8 right-8 w-1 h-1 bg-purple-500 rounded-full animate-pulse delay-100"></div>
-                <div className="absolute bottom-6 left-8 w-1.5 h-1.5 bg-cyan-500 rounded-full animate-pulse delay-200"></div>
-                <div className="absolute bottom-4 right-4 w-1 h-1 bg-emerald-500 rounded-full animate-pulse delay-300"></div>
-              </div>
-              <div className="text-center space-y-2">
-                <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full flex items-center justify-center">
-                  <BarChart className="h-8 w-8 text-blue-600" />
+            <div className="space-y-6">
+              {/* Device Status Distribution */}
+              <div className="space-y-3">
+                <h4 className="font-semibold text-foreground flex items-center gap-2">
+                  <Activity className="h-4 w-4" />
+                  Device Status Distribution
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                      <span className="text-sm font-medium">Online</span>
+                    </div>
+                    <span className="font-bold text-green-600">{fleetMetrics.onlineDevices}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                      <span className="text-sm font-medium">Offline</span>
+                    </div>
+                    <span className="font-bold text-red-600">{fleetMetrics.offlineDevices}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                      <span className="text-sm font-medium">Low Battery</span>
+                    </div>
+                    <span className="font-bold text-yellow-600">{fleetMetrics.lowBatteryDevices}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                      <span className="text-sm font-medium">Total</span>
+                    </div>
+                    <span className="font-bold text-blue-600">{fleetMetrics.totalDevices}</span>
+                  </div>
                 </div>
-                <p className="text-muted-foreground font-medium">Fleet Analytics Coming Soon</p>
-                <p className="text-sm text-muted-foreground/70">Real-time device monitoring</p>
+              </div>
+
+              {/* Battery Level Chart */}
+              <div className="space-y-3">
+                <h4 className="font-semibold text-foreground flex items-center gap-2">
+                  <Battery className="h-4 w-4" />
+                  Battery Levels
+                </h4>
+                <div className="space-y-2">
+                  {devices.map((device) => (
+                    <div key={device.deviceId} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">{device.deviceName}</span>
+                        <span className={`font-bold ${getBatteryColor(device.batteryLevel)}`}>
+                          {device.batteryLevel}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all duration-500 ${
+                            device.batteryLevel > 50 
+                              ? 'bg-gradient-to-r from-green-400 to-green-500' 
+                              : device.batteryLevel > 20 
+                              ? 'bg-gradient-to-r from-yellow-400 to-yellow-500'
+                              : 'bg-gradient-to-r from-red-400 to-red-500'
+                          }`}
+                          style={{ width: `${device.batteryLevel}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Network Status */}
+              <div className="space-y-3">
+                <h4 className="font-semibold text-foreground flex items-center gap-2">
+                  <Wifi className="h-4 w-4" />
+                  Network Connectivity
+                </h4>
+                <div className="space-y-2">
+                  {devices.map((device) => (
+                    <div key={device.deviceId} className="flex items-center justify-between p-2 rounded-lg bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-700/50">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${device.networkStatus.connected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        <span className="text-sm font-medium">{device.deviceName}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground capitalize">{device.networkStatus.type}</span>
+                        {device.networkStatus.signalStrength && (
+                          <span className="text-xs text-muted-foreground">
+                            {device.networkStatus.signalStrength}dBm
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -244,25 +326,62 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {devices.slice(0, 4).map((device, index) => (
-                <div key={device.deviceId} className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-900/50 hover:from-gray-100/70 hover:to-gray-200/70 dark:hover:from-gray-700/70 dark:hover:to-gray-800/70 transition-all duration-300">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-3 h-3 rounded-full ${device.online ? 'bg-green-500' : 'bg-red-500'} ${device.online ? 'animate-pulse' : ''}`}></div>
-                    <div>
-                      <p className="font-semibold text-foreground group-hover:text-blue-600 transition-colors">{device.deviceName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {device.location.latitude.toFixed(4)}, {device.location.longitude.toFixed(4)}
-                      </p>
+              {/* Map Container */}
+              <div className="h-64 rounded-xl overflow-hidden border border-gray-200/50 dark:border-gray-700/50">
+                {devices.length > 0 ? (
+                  <GoogleMap
+                    devices={devices}
+                    selectedDevice={null}
+                    onDeviceSelect={() => {}}
+                    center={{
+                      lat: devices[0]?.location?.latitude || 49.2630,
+                      lng: devices[0]?.location?.longitude || -123.1327
+                    }}
+                    zoom={12}
+                    height="100%"
+                  />
+                ) : (
+                  <div className="h-full flex items-center justify-center bg-gradient-to-br from-gray-50/50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-900/50">
+                    <div className="text-center space-y-2">
+                      <MapPin className="h-8 w-8 mx-auto text-muted-foreground" />
+                      <p className="text-muted-foreground">No devices with location data</p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge className={`${device.online ? 'bg-green-500' : 'bg-red-500'} text-white border-0 shadow-lg`}>
-                      {device.online ? 'Online' : 'Offline'}
-                    </Badge>
-                    <div className={`w-2 h-2 rounded-full ${device.online ? 'bg-emerald-500' : 'bg-red-500'} ${device.online ? 'animate-pulse' : ''}`}></div>
+                )}
+              </div>
+              
+              {/* Device List */}
+              <div className="space-y-2">
+                <h4 className="font-semibold text-foreground text-sm">Device Details</h4>
+                {devices.slice(0, 3).map((device, index) => (
+                  <div key={device.deviceId} className="group flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-900/50 hover:from-gray-100/70 hover:to-gray-200/70 dark:hover:from-gray-700/70 dark:hover:to-gray-800/70 transition-all duration-300">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-3 h-3 rounded-full ${device.online ? 'bg-green-500' : 'bg-red-500'} ${device.online ? 'animate-pulse' : ''}`}></div>
+                      <div>
+                        <p className="font-semibold text-foreground group-hover:text-blue-600 transition-colors text-sm">{device.deviceName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {device.location.latitude.toFixed(4)}, {device.location.longitude.toFixed(4)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Badge className={`${device.online ? 'bg-green-500' : 'bg-red-500'} text-white border-0 shadow-lg text-xs`}>
+                        {device.online ? 'Online' : 'Offline'}
+                      </Badge>
+                      <div className="text-xs text-muted-foreground">
+                        {device.batteryLevel}%
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+                {devices.length > 3 && (
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground">
+                      +{devices.length - 3} more devices
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
