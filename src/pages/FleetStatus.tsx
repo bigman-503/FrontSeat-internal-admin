@@ -16,8 +16,9 @@ import {
   TrendingUp,
   TrendingDown,
   Smartphone,
+  AlertCircle,
 } from "lucide-react";
-import { mockDevices, mockFleetMetrics } from "@/data/mockDevices";
+import { useDevices } from "@/hooks/useDevices";
 import { Device } from "@/types/device";
 
 const getStatusColor = (status: Device['status']) => {
@@ -44,16 +45,16 @@ const getBatteryProgressColor = (level: number) => {
 };
 
 export default function FleetStatus() {
-  const [devices] = useState<Device[]>(mockDevices);
+  const { devices, loading, error, refetch } = useDevices();
   const [lastRefresh] = useState(new Date());
 
-  const onlineDevices = devices.filter(d => d.isOnline);
-  const offlineDevices = devices.filter(d => !d.isOnline);
+  const onlineDevices = devices.filter(d => d.online);
+  const offlineDevices = devices.filter(d => !d.online);
   const lowBatteryDevices = devices.filter(d => d.batteryLevel < 20);
-  const chargingDevices = devices.filter(d => d.isCharging);
+  const chargingDevices = devices.filter(d => d.charging);
 
-  const averageBatteryLevel = devices.reduce((sum, d) => sum + d.batteryLevel, 0) / devices.length;
-  const averageUptime = devices.reduce((sum, d) => sum + (d.uptime || 0), 0) / devices.length;
+  const averageBatteryLevel = devices.length > 0 ? devices.reduce((sum, d) => sum + d.batteryLevel, 0) / devices.length : 0;
+  const averageUptime = devices.length > 0 ? devices.reduce((sum, d) => sum + (d.uptime || 0), 0) / devices.length : 0;
 
   const statusDistribution = {
     online: onlineDevices.length,
@@ -61,6 +62,38 @@ export default function FleetStatus() {
     lowBattery: lowBatteryDevices.length,
     charging: chargingDevices.length,
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="space-y-8 relative">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-blue-600" />
+            <p className="text-muted-foreground">Loading fleet status...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="space-y-8 relative">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <AlertCircle className="h-8 w-8 mx-auto text-red-500" />
+            <p className="text-muted-foreground">Failed to load fleet status</p>
+            <Button onClick={refetch} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 relative">
@@ -85,7 +118,7 @@ export default function FleetStatus() {
           <div className="text-sm text-muted-foreground">
             Last updated: {lastRefresh.toLocaleTimeString()}
           </div>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={refetch}>
             <RefreshCw className="h-4 w-4" />
             Refresh
           </Button>
@@ -281,7 +314,7 @@ export default function FleetStatus() {
                     <p className="text-sm text-muted-foreground">{device.deviceId}</p>
                   </div>
                   <Badge 
-                    variant={device.isOnline ? "default" : "destructive"}
+                    variant={device.online ? "default" : "destructive"}
                     className={`${getStatusColor(device.status)}`}
                   >
                     {device.status}
@@ -295,7 +328,7 @@ export default function FleetStatus() {
                       <span className={`text-sm font-medium ${getBatteryColor(device.batteryLevel)}`}>
                         {device.batteryLevel}%
                       </span>
-                      {device.isCharging && <span className="text-green-500">⚡</span>}
+                      {device.charging && <span className="text-green-500">⚡</span>}
                     </div>
                   </div>
                   <Progress 

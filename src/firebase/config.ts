@@ -6,17 +6,26 @@ import { getStorage } from 'firebase/storage';
 
 // Firebase configuration from environment variables
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyA5OifYyKp-Z4OkFjtzyOs_mLD3FgNSzzc",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "frontseat-admin.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "frontseat-admin",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "frontseat-admin.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "102646555109",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:102646555109:web:c2b69d07970664bbc14f0c"
 };
+
+// Debug: Log Firebase configuration (without sensitive data)
+console.log('🔧 Firebase Config Check:');
+console.log('  - API Key:', import.meta.env.VITE_FIREBASE_API_KEY ? '✅ Set' : '❌ Missing');
+console.log('  - Auth Domain:', import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ? '✅ Set' : '❌ Missing');
+console.log('  - Project ID:', import.meta.env.VITE_FIREBASE_PROJECT_ID ? '✅ Set' : '❌ Missing');
+console.log('  - Storage Bucket:', import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ? '✅ Set' : '❌ Missing');
+console.log('  - Messaging Sender ID:', import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ? '✅ Set' : '❌ Missing');
+console.log('  - App ID:', import.meta.env.VITE_FIREBASE_APP_ID ? '✅ Set' : '❌ Missing');
 
 // Configuration validation (silent in production)
 
-// Validate that all required environment variables are present
+// Validate that all required environment variables are present (with fallbacks)
 const requiredEnvVars = [
   'VITE_FIREBASE_API_KEY',
   'VITE_FIREBASE_AUTH_DOMAIN', 
@@ -29,9 +38,9 @@ const requiredEnvVars = [
 const missingEnvVars = requiredEnvVars.filter(envVar => !import.meta.env[envVar]);
 
 if (missingEnvVars.length > 0) {
-  throw new Error(
-    `Missing required environment variables: ${missingEnvVars.join(', ')}\n` +
-    'Please check your .env.local file and ensure all Firebase configuration variables are set.'
+  console.warn(
+    `⚠️ Missing environment variables: ${missingEnvVars.join(', ')}\n` +
+    'Using fallback values. Please check your .env.local file.'
   );
 }
 

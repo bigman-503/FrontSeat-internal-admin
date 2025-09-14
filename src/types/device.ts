@@ -2,12 +2,20 @@ export interface DeviceLocation {
   latitude: number;
   longitude: number;
   accuracy: number;
+  timestamp: number;
 }
 
 export interface NetworkStatus {
   connected: boolean;
-  type: 'wifi' | 'cellular' | 'ethernet' | 'unknown';
   signalStrength?: number;
+  type: 'wifi' | 'cellular' | 'ethernet' | 'unknown';
+  online: boolean;
+}
+
+export interface ScreenStatus {
+  isScreenOn: boolean;
+  currentApp: string;
+  appPackageName: string;
 }
 
 export interface Device {
@@ -18,17 +26,21 @@ export interface Device {
   osVersion: string;
   appVersion: string;
   batteryLevel: number;
-  isCharging: boolean;
+  charging: boolean;
   location: DeviceLocation;
   networkStatus: NetworkStatus;
-  isOnline: boolean;
-  lastSeen: string;
+  online: boolean;
+  storageUsage: number;
   timestamp: string;
+  uptime: number;
+  screenStatus: ScreenStatus;
+  memoryUsage: number;
+  heartbeatCount: number;
+  lastSeen: string;
   status: 'online' | 'offline' | 'low_battery' | 'error' | 'maintenance';
   carId?: string;
   driverId?: string;
   lastMaintenance?: string;
-  uptime?: number; // in hours
 }
 
 export interface FleetMetrics {

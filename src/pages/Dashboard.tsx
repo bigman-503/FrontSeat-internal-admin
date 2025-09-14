@@ -26,15 +26,17 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
-import { mockDevices, mockFleetMetrics } from "@/data/mockDevices";
+import { useDevices } from "@/hooks/useDevices";
 import { Device } from "@/types/device";
 
-// Fleet metrics for demonstration
-const metrics = [
+// Helper function to create metrics array
+const createMetrics = (fleetMetrics: any) => [
   {
     title: "Total Devices",
-    value: mockFleetMetrics.totalDevices.toString(),
+    value: fleetMetrics.totalDevices.toString(),
     change: "All devices in fleet",
     changeType: "neutral" as const,
     icon: <Smartphone className="h-5 w-5" />,
@@ -42,32 +44,29 @@ const metrics = [
   },
   {
     title: "Online Devices",
-    value: `${mockFleetMetrics.onlineDevices}/${mockFleetMetrics.totalDevices}`,
-    change: `${Math.round((mockFleetMetrics.onlineDevices / mockFleetMetrics.totalDevices) * 100)}% online`,
+    value: `${fleetMetrics.onlineDevices}/${fleetMetrics.totalDevices}`,
+    change: `${Math.round((fleetMetrics.onlineDevices / Math.max(fleetMetrics.totalDevices, 1)) * 100)}% online`,
     changeType: "positive" as const,
     icon: <Wifi className="h-5 w-5" />,
     variant: "success" as const,
   },
   {
     title: "Average Battery",
-    value: `${mockFleetMetrics.averageBatteryLevel.toFixed(1)}%`,
-    change: `${mockFleetMetrics.lowBatteryDevices} devices need charging`,
-    changeType: mockFleetMetrics.averageBatteryLevel < 30 ? "negative" as const : "positive" as const,
+    value: `${fleetMetrics.averageBatteryLevel.toFixed(1)}%`,
+    change: `${fleetMetrics.lowBatteryDevices} devices need charging`,
+    changeType: fleetMetrics.averageBatteryLevel < 30 ? "negative" as const : "positive" as const,
     icon: <Battery className="h-5 w-5" />,
-    variant: mockFleetMetrics.averageBatteryLevel < 30 ? "destructive" as const : "info" as const,
+    variant: fleetMetrics.averageBatteryLevel < 30 ? "destructive" as const : "info" as const,
   },
   {
     title: "Average Uptime",
-    value: `${mockFleetMetrics.averageUptime.toFixed(1)}h`,
+    value: `${fleetMetrics.averageUptime.toFixed(1)}h`,
     change: "Last 24 hours",
     changeType: "positive" as const,
     icon: <Activity className="h-5 w-5" />,
     variant: "warning" as const,
   },
 ];
-
-// Recent device activity
-const recentDevices = mockDevices.slice(0, 4);
 
 const getStatusBadge = (device: Device) => {
   const statusConfig = {
@@ -105,6 +104,45 @@ const formatLastSeen = (lastSeen: string) => {
 };
 
 export default function Dashboard() {
+  const { devices, fleetMetrics, loading, error, refetch } = useDevices();
+  
+  // Create metrics array from real-time data
+  const metrics = createMetrics(fleetMetrics);
+  
+  // Get recent devices (first 4)
+  const recentDevices = devices.slice(0, 4);
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="space-y-8 relative">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-blue-600" />
+            <p className="text-muted-foreground">Loading fleet data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="space-y-8 relative">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <AlertCircle className="h-8 w-8 mx-auto text-red-500" />
+            <p className="text-muted-foreground">Failed to load fleet data</p>
+            <Button onClick={refetch} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 relative">
       {/* Background Pattern */}
@@ -124,10 +162,21 @@ export default function Dashboard() {
             Fleet management overview - Monitor your tablet devices in real-time.
           </p>
         </div>
-        <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 px-6 py-3 rounded-xl">
-          <Plus className="h-5 w-5 mr-2" />
-          Add Device
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button 
+            onClick={refetch} 
+            variant="outline" 
+            size="sm"
+            className="hover:bg-blue-50 dark:hover:bg-blue-900/20"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 px-6 py-3 rounded-xl">
+            <Plus className="h-5 w-5 mr-2" />
+            Add Device
+          </Button>
+        </div>
       </div>
 
       {/* Metrics Grid */}
@@ -195,10 +244,10 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {mockDevices.slice(0, 4).map((device, index) => (
+              {devices.slice(0, 4).map((device, index) => (
                 <div key={device.deviceId} className="group flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-900/50 hover:from-gray-100/70 hover:to-gray-200/70 dark:hover:from-gray-700/70 dark:hover:to-gray-800/70 transition-all duration-300">
                   <div className="flex items-center space-x-3">
-                    <div className={`w-3 h-3 rounded-full ${device.isOnline ? 'bg-green-500' : 'bg-red-500'} ${device.isOnline ? 'animate-pulse' : ''}`}></div>
+                    <div className={`w-3 h-3 rounded-full ${device.online ? 'bg-green-500' : 'bg-red-500'} ${device.online ? 'animate-pulse' : ''}`}></div>
                     <div>
                       <p className="font-semibold text-foreground group-hover:text-blue-600 transition-colors">{device.deviceName}</p>
                       <p className="text-sm text-muted-foreground">
@@ -207,10 +256,10 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge className={`${device.isOnline ? 'bg-green-500' : 'bg-red-500'} text-white border-0 shadow-lg`}>
-                      {device.isOnline ? 'Online' : 'Offline'}
+                    <Badge className={`${device.online ? 'bg-green-500' : 'bg-red-500'} text-white border-0 shadow-lg`}>
+                      {device.online ? 'Online' : 'Offline'}
                     </Badge>
-                    <div className={`w-2 h-2 rounded-full ${device.isOnline ? 'bg-emerald-500' : 'bg-red-500'} ${device.isOnline ? 'animate-pulse' : ''}`}></div>
+                    <div className={`w-2 h-2 rounded-full ${device.online ? 'bg-emerald-500' : 'bg-red-500'} ${device.online ? 'animate-pulse' : ''}`}></div>
                   </div>
                 </div>
               ))}
@@ -259,7 +308,7 @@ export default function Dashboard() {
                         <span className={`${getBatteryColor(device.batteryLevel)}`}>
                           {device.batteryLevel}%
                         </span>
-                        {device.isCharging && <span className="text-green-500">⚡</span>}
+                        {device.charging && <span className="text-green-500">⚡</span>}
                       </div>
                     </TableCell>
                     <TableCell className="font-medium capitalize">
@@ -273,7 +322,7 @@ export default function Dashboard() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Button variant="ghost" size="icon" className="hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors">
-                          {device.isOnline ? (
+                          {device.online ? (
                             <Pause className="h-4 w-4 text-red-500" />
                           ) : (
                             <Play className="h-4 w-4 text-emerald-500" />

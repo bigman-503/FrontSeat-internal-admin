@@ -24,18 +24,20 @@ import {
   Navigation,
   Clock,
   Smartphone,
+  AlertCircle,
 } from "lucide-react";
-import { mockDevices } from "@/data/mockDevices";
+import { useDevices } from "@/hooks/useDevices";
 import { Device } from "@/types/device";
+import { GoogleMap } from "@/components/GoogleMap";
 
 const getStatusColor = (device: Device) => {
-  if (device.isOnline) return "text-green-500";
+  if (device.online) return "text-green-500";
   if (device.status === 'low_battery') return "text-yellow-500";
   return "text-red-500";
 };
 
 const getStatusIcon = (device: Device) => {
-  if (device.isOnline) return <CheckCircle className="h-4 w-4 text-green-500" />;
+  if (device.online) return <CheckCircle className="h-4 w-4 text-green-500" />;
   if (device.status === 'low_battery') return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
   return <XCircle className="h-4 w-4 text-red-500" />;
 };
@@ -54,7 +56,7 @@ const formatDistance = (lat1: number, lon1: number, lat2: number, lon2: number) 
 export default function Locations() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [devices] = useState<Device[]>(mockDevices);
+  const { devices, loading, error, refetch } = useDevices();
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
 
   const filteredDevices = devices.filter((device) => {
@@ -65,12 +67,44 @@ export default function Locations() {
     return matchesSearch && matchesStatus;
   });
 
-  const onlineDevices = devices.filter(d => d.isOnline);
-  const offlineDevices = devices.filter(d => !d.isOnline);
+  const onlineDevices = devices.filter(d => d.online);
+  const offlineDevices = devices.filter(d => !d.online);
 
   // Calculate center point for map
-  const centerLat = devices.reduce((sum, d) => sum + d.location.latitude, 0) / devices.length;
-  const centerLon = devices.reduce((sum, d) => sum + d.location.longitude, 0) / devices.length;
+  const centerLat = devices.length > 0 ? devices.reduce((sum, d) => sum + d.location.latitude, 0) / devices.length : 0;
+  const centerLon = devices.length > 0 ? devices.reduce((sum, d) => sum + d.location.longitude, 0) / devices.length : 0;
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="space-y-8 relative">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-blue-600" />
+            <p className="text-muted-foreground">Loading device locations...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="space-y-8 relative">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <AlertCircle className="h-8 w-8 mx-auto text-red-500" />
+            <p className="text-muted-foreground">Failed to load device locations</p>
+            <Button onClick={refetch} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 relative">
@@ -92,7 +126,7 @@ export default function Locations() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={refetch}>
             <RefreshCw className="h-4 w-4" />
             Refresh
           </Button>
@@ -162,50 +196,14 @@ export default function Locations() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-96 bg-gradient-to-br from-gray-50/50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-900/50 rounded-xl flex items-center justify-center relative overflow-hidden">
-              {/* Mock Map Background */}
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-100/30 to-green-100/30 dark:from-blue-900/20 dark:to-green-900/20"></div>
-              
-              {/* Device Markers */}
-              <div className="relative w-full h-full">
-                {filteredDevices.map((device, index) => {
-                  const x = 20 + (index * 15) % 60; // Mock positioning
-                  const y = 20 + (index * 25) % 60;
-                  
-                  return (
-                    <div
-                      key={device.deviceId}
-                      className={`absolute w-4 h-4 rounded-full border-2 border-white shadow-lg cursor-pointer transition-all duration-200 hover:scale-125 ${
-                        device.isOnline ? 'bg-green-500' : 'bg-red-500'
-                      }`}
-                      style={{ left: `${x}%`, top: `${y}%` }}
-                      onClick={() => setSelectedDevice(device)}
-                    >
-                      <div className={`w-2 h-2 rounded-full ${
-                        device.isOnline ? 'bg-green-300' : 'bg-red-300'
-                      } absolute top-0.5 left-0.5`} />
-                    </div>
-                  );
-                })}
-              </div>
-              
-              {/* Map Center Info */}
-              <div className="absolute bottom-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg p-3 shadow-lg">
-                <div className="text-sm font-medium text-foreground">Center Point</div>
-                <div className="text-xs text-muted-foreground">
-                  {centerLat.toFixed(4)}, {centerLon.toFixed(4)}
-                </div>
-              </div>
-              
-              {/* Map Placeholder Text */}
-              <div className="text-center space-y-2">
-                <div className="w-16 h-16 mx-auto bg-gradient-to-br from-blue-500/20 to-green-500/20 rounded-full flex items-center justify-center">
-                  <MapPin className="h-8 w-8 text-blue-600" />
-                </div>
-                <p className="text-muted-foreground font-medium">Interactive Map Coming Soon</p>
-                <p className="text-sm text-muted-foreground/70">Real-time GPS tracking</p>
-              </div>
-            </div>
+            <GoogleMap
+              devices={filteredDevices}
+              selectedDevice={selectedDevice}
+              onDeviceSelect={setSelectedDevice}
+              center={{ lat: centerLat, lng: centerLon }}
+              zoom={12}
+              height="400px"
+            />
           </CardContent>
         </Card>
 
@@ -313,7 +311,7 @@ export default function Locations() {
                 <div className="flex items-center gap-2">
                   <Battery className="h-4 w-4" />
                   <span className="text-sm">{selectedDevice.batteryLevel}%</span>
-                  {selectedDevice.isCharging && <span className="text-green-500">⚡</span>}
+                  {selectedDevice.charging && <span className="text-green-500">⚡</span>}
                 </div>
               </div>
               

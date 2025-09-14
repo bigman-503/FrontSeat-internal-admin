@@ -34,8 +34,9 @@ import {
   Play,
   Pause,
   Settings,
+  AlertCircle,
 } from "lucide-react";
-import { mockDevices } from "@/data/mockDevices";
+import { useDevices } from "@/hooks/useDevices";
 import { Device, DeviceStatusFilter } from "@/types/device";
 
 const getStatusBadge = (device: Device) => {
@@ -77,7 +78,7 @@ export default function Devices() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [platformFilter, setPlatformFilter] = useState<string>("all");
-  const [devices] = useState<Device[]>(mockDevices);
+  const { devices, loading, error, refetch } = useDevices();
 
   const filteredDevices = devices.filter((device) => {
     const matchesSearch = device.deviceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -88,9 +89,41 @@ export default function Devices() {
     return matchesSearch && matchesStatus && matchesPlatform;
   });
 
-  const onlineDevices = devices.filter(d => d.isOnline).length;
+  const onlineDevices = devices.filter(d => d.online).length;
   const lowBatteryDevices = devices.filter(d => d.batteryLevel < 20).length;
-  const offlineDevices = devices.filter(d => !d.isOnline).length;
+  const offlineDevices = devices.filter(d => !d.online).length;
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="space-y-8 relative">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-blue-600" />
+            <p className="text-muted-foreground">Loading devices...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="space-y-8 relative">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <AlertCircle className="h-8 w-8 mx-auto text-red-500" />
+            <p className="text-muted-foreground">Failed to load devices</p>
+            <Button onClick={refetch} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 relative">
@@ -112,7 +145,7 @@ export default function Devices() {
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={refetch}>
             <RefreshCw className="h-4 w-4" />
             Refresh
           </Button>
@@ -261,7 +294,7 @@ export default function Devices() {
                         <span className={`font-medium ${getBatteryColor(device.batteryLevel)}`}>
                           {device.batteryLevel}%
                         </span>
-                        {device.isCharging && <span className="text-green-500">⚡</span>}
+                        {device.charging && <span className="text-green-500">⚡</span>}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -289,7 +322,7 @@ export default function Devices() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Button variant="ghost" size="icon" className="hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors">
-                          {device.isOnline ? (
+                          {device.online ? (
                             <Pause className="h-4 w-4 text-red-500" />
                           ) : (
                             <Play className="h-4 w-4 text-emerald-500" />

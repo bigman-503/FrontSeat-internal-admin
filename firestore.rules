@@ -21,6 +21,18 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
     
+    // Allow authenticated users to read device data for fleet management
+    match /devices/{deviceId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+      
+      // Allow access to device state subcollection
+      match /state/{stateId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null;
+      }
+    }
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;
