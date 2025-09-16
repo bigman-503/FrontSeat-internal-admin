@@ -39,6 +39,8 @@ export interface DeviceHistoricalData {
     mostUsedApp: string;
     batteryHealth: 'excellent' | 'good' | 'fair' | 'poor';
   };
+  isMockData?: boolean;
+  dataSource?: 'bigquery' | 'mock' | 'unavailable';
 }
 
 export class AnalyticsService {
@@ -70,8 +72,22 @@ export class AnalyticsService {
 
       if (response.ok) {
         const data = await response.json();
-        console.log(`✅ AnalyticsService: Retrieved real data from API`);
-        return data;
+        
+        // Check if this is real data or mock/unavailable data
+        if (data.dataSource === 'unavailable') {
+          console.log(`⚠️ AnalyticsService: Data unavailable - BigQuery not configured`);
+          throw new Error('Analytics data is not available. BigQuery integration is not configured.');
+        } else if (data.dataSource === 'mock') {
+          console.log(`⚠️ AnalyticsService: Retrieved mock data from API`);
+          throw new Error('Analytics data is not available. Only mock data is currently available.');
+        } else if (data.dataSource === 'bigquery') {
+          console.log(`✅ AnalyticsService: Retrieved real data from BigQuery`);
+          return data;
+        } else {
+          // Legacy response without dataSource field
+          console.log(`⚠️ AnalyticsService: Retrieved data without source info - treating as unavailable`);
+          throw new Error('Analytics data is not available. Data source is not properly configured.');
+        }
       } else {
         console.log(`⚠️ AnalyticsService: API not available`);
         throw new Error('Analytics data is not available. Please ensure the backend API is running and configured.');

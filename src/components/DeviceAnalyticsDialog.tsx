@@ -161,18 +161,23 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
                 <div className="space-y-2">
                   <h3 className="text-lg font-semibold text-foreground">Analytics Not Available</h3>
                   <p className="text-muted-foreground text-sm">
-                    {error.includes('not available') 
+                    {error.includes('BigQuery integration is not configured')
+                      ? 'Historical analytics data requires BigQuery integration to be configured. Real device data is not available.'
+                      : error.includes('Only mock data is currently available')
+                      ? 'Only mock data is currently available. Real device analytics require BigQuery integration.'
+                      : error.includes('not available')
                       ? 'Historical analytics data requires a backend API to be running. Please set up the backend service to view device analytics.'
                       : error
                     }
                   </p>
                 </div>
                 <div className="space-y-2 text-xs text-muted-foreground">
-                  <p>To enable analytics:</p>
+                  <p>To enable real analytics data:</p>
                   <ol className="list-decimal list-inside space-y-1 text-left">
-                    <li>Deploy the backend API (see backend-api-example.js)</li>
-                    <li>Set VITE_API_BASE_URL in your .env.local file</li>
-                    <li>Configure BigQuery integration</li>
+                    <li>Configure BigQuery credentials in your environment</li>
+                    <li>Set GOOGLE_CLOUD_PROJECT_ID in your .env.local file</li>
+                    <li>Set GOOGLE_APPLICATION_CREDENTIALS to your service account key</li>
+                    <li>Ensure your BigQuery dataset and tables are set up</li>
                   </ol>
                 </div>
                 <Button variant="outline" onClick={fetchAnalytics}>
