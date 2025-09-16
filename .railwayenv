@@ -1,0 +1,13 @@
+# Railway Environment Variables
+# Copy these to your Railway project settings
+
+# BigQuery Configuration
+GOOGLE_CLOUD_PROJECT_ID=frontseat-admin
+GOOGLE_APPLICATION_CREDENTIALS=./frontseat-service-account.json
+
+# Server Configuration
+PORT=3001
+NODE_ENV=production
+
+# Note: You'll need to upload the service account JSON file
+# or convert it to environment variables in Railway

@@ -12,6 +12,7 @@
     "build:dev": "vite build --mode development",
     "build:server": "tsc --project tsconfig.server.json",
     "start:server": "node dist/server/index.js",
+    "postinstall": "npm run build:server",
     "lint": "eslint .",
     "preview": "vite preview",
     "setup-env": "node setup-env.js",
