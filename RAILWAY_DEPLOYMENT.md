@@ -5,6 +5,9 @@
 ### **1. Prepare Your Repository**
 ✅ **Files already created:**
 - `railway.json` - Railway configuration
+- `nixpacks.toml` - Forces Node.js detection
+- `Procfile` - Backup process definition
+- `.nvmrc` - Node.js version specification
 - `.railwayenv` - Environment variables template
 - `package.json` - Updated with build scripts
 
@@ -126,6 +129,14 @@ VITE_API_BASE_URL=https://your-app.railway.app/api
 4. **Deploy!**
 
 ## 🔧 **Troubleshooting**
+
+### **"Deploying as vite static site" Error:**
+- ✅ **Fixed with:** `nixpacks.toml`, `Procfile`, and `.nvmrc` files
+- These files force Railway to detect it as a Node.js project
+
+### **"lockfile had changes" Error:**
+- ✅ **Fixed with:** Updated `package.json` with proper engines
+- Railway will now use npm instead of bun
 
 ### **Build Fails:**
 - Check Railway logs for TypeScript errors
