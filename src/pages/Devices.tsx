@@ -35,9 +35,11 @@ import {
   Pause,
   Settings,
   AlertCircle,
+  BarChart3,
 } from "lucide-react";
 import { useDevices } from "@/hooks/useDevices";
 import { Device, DeviceStatusFilter } from "@/types/device";
+import { DeviceAnalyticsDialog } from "@/components/DeviceAnalyticsDialog";
 
 const getStatusBadge = (device: Device) => {
   const statusConfig = {
@@ -78,6 +80,8 @@ export default function Devices() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [platformFilter, setPlatformFilter] = useState<string>("all");
+  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const { devices, loading, error, refetch } = useDevices();
 
   const filteredDevices = devices.filter((device) => {
@@ -92,6 +96,11 @@ export default function Devices() {
   const onlineDevices = devices.filter(d => d.online).length;
   const lowBatteryDevices = devices.filter(d => d.batteryLevel < 20).length;
   const offlineDevices = devices.filter(d => !d.online).length;
+
+  const handleDeviceClick = (device: Device) => {
+    setSelectedDevice(device);
+    setAnalyticsOpen(true);
+  };
 
   // Show loading state
   if (loading) {
@@ -277,12 +286,19 @@ export default function Devices() {
               </TableHeader>
               <TableBody>
                 {filteredDevices.map((device) => (
-                  <TableRow key={device.deviceId} className="group hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 dark:hover:from-gray-800/50 dark:hover:to-gray-700/50 transition-all duration-300 border-gray-200/50 dark:border-gray-700/50">
+                  <TableRow 
+                    key={device.deviceId} 
+                    className="group hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-purple-50/50 dark:hover:from-gray-800/50 dark:hover:to-gray-700/50 transition-all duration-300 border-gray-200/50 dark:border-gray-700/50 cursor-pointer"
+                    onClick={() => handleDeviceClick(device)}
+                  >
                     <TableCell>
                       <div className="space-y-1">
-                        <p className="font-semibold text-foreground group-hover:text-blue-600 transition-colors">
-                          {device.deviceName}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-foreground group-hover:text-blue-600 transition-colors">
+                            {device.deviceName}
+                          </p>
+                          <BarChart3 className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
                         <p className="text-sm text-muted-foreground">{device.deviceId}</p>
                         <p className="text-xs text-muted-foreground capitalize">{device.platform} • {device.model}</p>
                       </div>
@@ -321,15 +337,31 @@ export default function Devices() {
                     <TableCell className="font-medium text-foreground">{device.uptime || 0}h</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="icon" className="hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="hover:bg-blue-100 dark:hover:bg-blue-900/20 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Handle play/pause action
+                          }}
+                        >
                           {device.online ? (
                             <Pause className="h-4 w-4 text-red-500" />
                           ) : (
                             <Play className="h-4 w-4 text-emerald-500" />
                           )}
                         </Button>
-                        <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                          <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeviceClick(device);
+                          }}
+                        >
+                          <BarChart3 className="h-4 w-4 text-muted-foreground" />
                         </Button>
                       </div>
                     </TableCell>
@@ -340,6 +372,13 @@ export default function Devices() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Device Analytics Dialog */}
+      <DeviceAnalyticsDialog
+        device={selectedDevice}
+        open={analyticsOpen}
+        onOpenChange={setAnalyticsOpen}
+      />
     </div>
   );
 }
