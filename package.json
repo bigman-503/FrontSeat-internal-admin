@@ -13,14 +13,14 @@
     "build:server": "tsc --project tsconfig.server.json",
     "start:server": "node dist/server/index.js",
     "postinstall": "npm run build:server",
-    "engines": {
-      "node": ">=18.0.0",
-      "npm": ">=8.0.0"
-    },
     "lint": "eslint .",
     "preview": "vite preview",
     "setup-env": "node setup-env.js",
     "verify-setup": "node verify-setup.js"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   },
   "dependencies": {
     "@google-cloud/bigquery": "^8.1.1",
