@@ -1,12 +1,12 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ESNext",
+    "module": "CommonJS",
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "allowJs": true,
-    "outDir": "./dist",
+    "outDir": "./dist/server",
     "rootDir": "./src/server",
     "strict": true,
     "noImplicitAny": true,
