@@ -45,6 +45,7 @@ export interface DeviceHistoricalData {
 
 export class AnalyticsService {
   private static readonly API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+  private static readonly IS_DEVELOPMENT = import.meta.env.DEV;
 
   /**
    * Get device analytics for a specific date range
@@ -68,10 +69,17 @@ export class AnalyticsService {
           startDate,
           endDate,
         }),
+        cache: 'no-cache', // Force fresh data
       });
 
       if (response.ok) {
         const data = await response.json();
+        console.log(`📊 AnalyticsService: Raw API response:`, { 
+          dataSource: data.dataSource, 
+          isMockData: data.isMockData, 
+          analyticsLength: data.analytics?.length,
+          status: response.status 
+        });
         
         // Check if this is real data or mock/unavailable data
         if (data.dataSource === 'unavailable') {
@@ -89,12 +97,22 @@ export class AnalyticsService {
           return { ...data, dataSource: 'mock', isMockData: true };
         }
       } else {
-        console.log(`⚠️ AnalyticsService: API not available, using mock data`);
-        return this.generateMockData(deviceId, startDate, endDate);
+        console.log(`⚠️ AnalyticsService: API not available (${response.status}), using mock data`);
+        const mockData = this.generateMockData(deviceId, startDate, endDate);
+        // Add development hint
+        if (this.IS_DEVELOPMENT) {
+          mockData.dataSource = 'development';
+        }
+        return mockData;
       }
     } catch (error) {
       console.log(`⚠️ AnalyticsService: Error fetching from API, using mock data:`, error);
-      return this.generateMockData(deviceId, startDate, endDate);
+      const mockData = this.generateMockData(deviceId, startDate, endDate);
+      // Add development hint
+      if (this.IS_DEVELOPMENT) {
+        mockData.dataSource = 'development';
+      }
+      return mockData;
     }
   }
 

@@ -1,4 +1,8 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import dotenv from 'dotenv';
+
+// Load environment variables from .env.local
+dotenv.config({ path: '.env.local' });
 
 interface DeviceEvents {
   event_id: string;

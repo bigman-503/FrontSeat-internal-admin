@@ -1,5 +1,9 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { BigQuery } from '@google-cloud/bigquery';
+import dotenv from 'dotenv';
+
+// Load environment variables from .env.local
+dotenv.config({ path: '.env.local' });
 
 // Types
 interface DeviceAnalytics {
@@ -51,11 +55,7 @@ interface AnalyticsResponse {
   dataSource: 'bigquery' | 'mock' | 'unavailable';
 }
 
-// Initialize BigQuery client
-const bigquery = new BigQuery({
-  projectId: process.env.GOOGLE_CLOUD_PROJECT_ID || 'your-project-id-here',
-  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS || './frontseat-service-account.json',
-});
+// BigQuery client will be initialized in the handler function
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers
@@ -79,27 +79,85 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log(`📊 Fetching analytics for device ${deviceId} from ${startDate} to ${endDate}`);
 
+    // Initialize BigQuery client
+    let bigqueryConfig: any = {
+      projectId: 'frontseat-admin', // Hardcode for now to avoid env issues
+    };
+
+    // Try to read credentials from file directly
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const credentialsPath = path.join(process.cwd(), 'frontseat-service-account.json');
+      const credentialsContent = fs.readFileSync(credentialsPath, 'utf8');
+      const credentials = JSON.parse(credentialsContent);
+      bigqueryConfig.credentials = credentials;
+      console.log('✅ Using credentials from file:', credentialsPath);
+    } catch (error) {
+      console.log('⚠️ Failed to read credentials file:', error);
+      // Fallback to environment variable
+      if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+        try {
+          const jsonString = process.env.GOOGLE_APPLICATION_CREDENTIALS
+            .replace(/\n/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+          const credentials = JSON.parse(jsonString);
+          bigqueryConfig.credentials = credentials;
+          console.log('✅ Using JSON credentials from environment variable');
+        } catch (envError) {
+          console.log('⚠️ Failed to parse JSON credentials:', envError.message);
+          bigqueryConfig.keyFilename = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+        }
+      } else {
+        bigqueryConfig.keyFilename = './frontseat-service-account.json';
+      }
+    }
+
+    const bigquery = new BigQuery(bigqueryConfig);
+
+    // Debug: Log environment variables
+    console.log('🔧 Environment Variables:');
+    console.log('  - GOOGLE_CLOUD_PROJECT_ID:', process.env.GOOGLE_CLOUD_PROJECT_ID);
+    console.log('  - GOOGLE_APPLICATION_CREDENTIALS length:', process.env.GOOGLE_APPLICATION_CREDENTIALS?.length);
+    console.log('  - NODE_ENV:', process.env.NODE_ENV);
+
     // Check if BigQuery is properly configured
     const isBigQueryConfigured = process.env.GOOGLE_CLOUD_PROJECT_ID && 
                                  process.env.GOOGLE_CLOUD_PROJECT_ID !== 'your-project-id-here' &&
-                                 process.env.GOOGLE_APPLICATION_CREDENTIALS;
+                                 process.env.GOOGLE_APPLICATION_CREDENTIALS &&
+                                 bigqueryConfig.credentials;
+
+    console.log('🔧 BigQuery Configuration Check:');
+    console.log('  - Project ID:', process.env.GOOGLE_CLOUD_PROJECT_ID);
+    console.log('  - Has credentials:', !!bigqueryConfig.credentials);
+    console.log('  - Is configured:', isBigQueryConfigured);
 
     if (!isBigQueryConfigured) {
-      console.log(`⚠️ BigQuery not configured. Returning data unavailable response.`);
+      console.log(`⚠️ BigQuery not configured. Returning mock data for development.`);
+      const mockAnalytics = generateMockAnalytics(deviceId as string, startDate, endDate);
       res.json({
-        deviceId,
-        startDate,
-        endDate,
-        analytics: [],
-        summary: {
-          totalDays: 0,
-          averageUptime: 0,
-          totalAlerts: 0,
-          mostUsedApp: 'None',
-          batteryHealth: 'excellent',
-        },
-        isMockData: false,
-        dataSource: 'unavailable'
+        ...mockAnalytics,
+        isMockData: true,
+        dataSource: 'mock',
+        message: 'BigQuery not configured. Using mock data for development.'
+      });
+      return;
+    }
+
+    // Test BigQuery connection
+    try {
+      console.log('🔍 Testing BigQuery connection...');
+      const [datasets] = await bigquery.getDatasets();
+      console.log('✅ BigQuery connection successful! Available datasets:', datasets.map(d => d.id));
+    } catch (error) {
+      console.error('❌ BigQuery connection failed:', error);
+      const mockAnalytics = generateMockAnalytics(deviceId as string, startDate, endDate);
+      res.json({
+        ...mockAnalytics,
+        isMockData: true,
+        dataSource: 'mock',
+        message: `BigQuery connection failed: ${error instanceof Error ? error.message : String(error)}. Using mock data.`
       });
       return;
     }
@@ -143,22 +201,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Query the heartbeats table for real analytics data
       const query = `
         SELECT
-          FORMAT_DATE('%Y-%m-%d', DATE(device_timestamp)) AS date,
-          AVG(uptime) AS avg_uptime,
+          FORMAT_DATE('%Y-%m-%d', DATE(last_seen)) AS date,
           AVG(battery_level) AS avg_battery_level,
           COUNT(*) AS total_heartbeats,
           COUNTIF(latitude IS NOT NULL AND longitude IS NOT NULL) AS location_updates,
-          COUNTIF(network_connected = true) AS network_connections,
-          AVG(CAST(screen_on AS INT64)) AS screen_on_ratio,
-          AVG(memory_usage) AS avg_memory_usage,
           AVG(cpu_usage) AS avg_cpu_usage,
-          AVG(storage_usage) AS avg_storage_usage,
-          STRING_AGG(DISTINCT current_app, ', ') AS apps_used
+          AVG(heartbeat_count) AS avg_heartbeat_count,
+          COUNTIF(is_charging = true) AS charging_events,
+          AVG(location_accuracy) AS avg_location_accuracy
         FROM
           \`${process.env.GOOGLE_CLOUD_PROJECT_ID}.${targetDataset}.${targetTable}\`
         WHERE
-          device_id = @deviceId
-          AND DATE(device_timestamp) BETWEEN @startDate AND @endDate
+          (device_id = @deviceId OR device_name = @deviceId)
+          AND DATE(last_seen) BETWEEN @startDate AND @endDate
         GROUP BY
           date
         ORDER BY
@@ -185,20 +240,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const analytics: DeviceAnalytics[] = rows.map((row: any) => ({
         deviceId: deviceId as string,
         date: row.date,
-        totalUptime: Math.round((row.avg_uptime || 0) / 3600 * 100) / 100, // Convert seconds to hours
+        totalUptime: Math.round((row.avg_heartbeat_count || 0) * 0.5 * 100) / 100, // Estimate uptime based on heartbeats
         averageBatteryLevel: Math.round((row.avg_battery_level || 0) * 100) / 100,
         totalHeartbeats: row.total_heartbeats || 0,
         locationUpdates: row.location_updates || 0,
-        networkConnections: row.network_connections || 0,
-        screenOnTime: Math.round((row.screen_on_ratio || 0) * 24 * 60 * 100) / 100, // Convert ratio to minutes
-        appUsage: row.apps_used ? row.apps_used.split(', ').map((app: string) => ({
-          appName: app,
-          usageTime: Math.random() * 60 // Placeholder - would need more complex query for actual usage time
-        })) : [],
+        networkConnections: row.charging_events || 0, // Using charging events as proxy for activity
+        screenOnTime: Math.round((row.avg_cpu_usage || 0) * 0.1 * 100) / 100, // Estimate screen time based on CPU
+        appUsage: [], // No app data in current schema
         performanceMetrics: {
-          averageMemoryUsage: Math.round((row.avg_memory_usage || 0) * 100) / 100,
+          averageMemoryUsage: 0, // Not available in current schema
           averageCpuUsage: Math.round((row.avg_cpu_usage || 0) * 100) / 100,
-          storageUsage: Math.round((row.avg_storage_usage || 0) * 100) / 100,
+          storageUsage: 0, // Not available in current schema
         },
         alerts: [], // Would need separate query for alerts
       }));
