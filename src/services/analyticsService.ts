@@ -44,7 +44,7 @@ export interface DeviceHistoricalData {
 }
 
 export class AnalyticsService {
-  private static readonly API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://frontseat-backend.onrender.com/api';
+  private static readonly API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
   /**
    * Get device analytics for a specific date range
