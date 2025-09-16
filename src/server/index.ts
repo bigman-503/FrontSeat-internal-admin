@@ -164,7 +164,7 @@ app.post('/api/analytics/device/:deviceId', async (req: Request, res: Response) 
             break;
           }
         } catch (error) {
-          console.log(`⚠️ Could not access dataset ${dataset.id}:`, error.message);
+          console.log(`⚠️ Could not access dataset ${dataset.id}:`, error instanceof Error ? error.message : String(error));
         }
       }
       
@@ -216,7 +216,7 @@ app.post('/api/analytics/device/:deviceId', async (req: Request, res: Response) 
 
       // Transform BigQuery results to our analytics format
       const analytics: DeviceAnalytics[] = rows.map((row: any) => ({
-        deviceId,
+        deviceId: deviceId!,
         date: row.date,
         totalUptime: Math.round((row.avg_uptime || 0) / 3600 * 100) / 100, // Convert seconds to hours
         averageBatteryLevel: Math.round((row.avg_battery_level || 0) * 100) / 100,
@@ -257,7 +257,7 @@ app.post('/api/analytics/device/:deviceId', async (req: Request, res: Response) 
       
       // Fallback to mock data if BigQuery fails
       console.log('🔄 Falling back to mock data...');
-      const mockAnalytics = generateMockAnalytics(deviceId, startDate, endDate);
+      const mockAnalytics = generateMockAnalytics(deviceId!, startDate, endDate);
       
       res.json({
         ...mockAnalytics,
@@ -343,7 +343,7 @@ app.get('/api/analytics/device/:deviceId/events', async (req: Request, res: Resp
     console.log(`📋 Fetching events for device ${deviceId}`);
 
     // For now, return mock data
-    const mockEvents = generateMockEvents(deviceId, limit);
+    const mockEvents = generateMockEvents(deviceId!, limit);
     res.json(mockEvents);
 
     /* Uncomment this when BigQuery is properly configured:
@@ -434,7 +434,7 @@ function generateMockAnalytics(deviceId: string, startDate: string, endDate: str
     
     analytics.push({
       deviceId,
-      date: date.toISOString().split('T')[0],
+      date: date.toISOString().split('T')[0]!,
       totalUptime: Math.random() * 24,
       averageBatteryLevel: Math.random() * 100,
       totalHeartbeats: Math.floor(Math.random() * 1000) + 100,
@@ -476,7 +476,7 @@ function generateMockEvents(deviceId: string, limit: number): DeviceEvents[] {
   const eventTypes = ['battery_low', 'location_update', 'network_change', 'app_launch', 'system_alert'];
   
   for (let i = 0; i < Math.min(limit, 20); i++) {
-    const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+    const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)]!;
     const timestamp = new Date();
     timestamp.setHours(timestamp.getHours() - Math.random() * 24 * 7); // Last week
     
@@ -505,7 +505,7 @@ function generateMockFleetAnalytics(startDate: string, endDate: string): FleetAn
     date.setDate(date.getDate() + i);
     
     fleetData.push({
-      date: date.toISOString().split('T')[0],
+      date: date.toISOString().split('T')[0]!,
       total_devices: Math.floor(Math.random() * 50) + 20,
       avg_uptime: Math.random() * 20 + 4,
       avg_battery: Math.random() * 40 + 40,
