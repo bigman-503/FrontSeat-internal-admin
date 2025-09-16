@@ -81,7 +81,10 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
 
       setAnalyticsData(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch analytics');
+      // Analytics service now always returns data (either real or mock)
+      // This catch block should rarely be reached
+      console.error('Unexpected error fetching analytics:', err);
+      setError('Unexpected error occurred while fetching analytics');
     } finally {
       setLoading(false);
     }
@@ -157,28 +160,10 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
           {error && (
             <div className="flex items-center justify-center py-8">
               <div className="text-center space-y-4 max-w-md">
-                <AlertTriangle className="h-12 w-12 mx-auto text-yellow-500" />
+                <AlertTriangle className="h-12 w-12 mx-auto text-red-500" />
                 <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-foreground">Analytics Not Available</h3>
-                  <p className="text-muted-foreground text-sm">
-                    {error.includes('BigQuery integration is not configured')
-                      ? 'Historical analytics data requires BigQuery integration to be configured. Real device data is not available.'
-                      : error.includes('Only mock data is currently available')
-                      ? 'Only mock data is currently available. Real device analytics require BigQuery integration.'
-                      : error.includes('not available')
-                      ? 'Historical analytics data requires a backend API to be running. Please set up the backend service to view device analytics.'
-                      : error
-                    }
-                  </p>
-                </div>
-                <div className="space-y-2 text-xs text-muted-foreground">
-                  <p>To enable real analytics data:</p>
-                  <ol className="list-decimal list-inside space-y-1 text-left">
-                    <li>Configure BigQuery credentials in your environment</li>
-                    <li>Set GOOGLE_CLOUD_PROJECT_ID in your .env.local file</li>
-                    <li>Set GOOGLE_APPLICATION_CREDENTIALS to your service account key</li>
-                    <li>Ensure your BigQuery dataset and tables are set up</li>
-                  </ol>
+                  <h3 className="text-lg font-semibold text-foreground">Error Loading Analytics</h3>
+                  <p className="text-muted-foreground text-sm">{error}</p>
                 </div>
                 <Button variant="outline" onClick={fetchAnalytics}>
                   Try Again
@@ -189,6 +174,18 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
 
           {analyticsData && !loading && (
             <>
+              {/* Data Source Indicator */}
+              {analyticsData.isMockData && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-blue-600" />
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      Showing sample analytics data. Connect to your backend for real-time data.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card>

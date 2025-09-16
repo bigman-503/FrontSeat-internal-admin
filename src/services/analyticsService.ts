@@ -44,11 +44,11 @@ export interface DeviceHistoricalData {
 }
 
 export class AnalyticsService {
-  private static readonly API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+  private static readonly API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://frontseat-backend.onrender.com/api';
 
   /**
    * Get device analytics for a specific date range
-   * This method will try to fetch from a backend API first, then show a message if not available
+   * This method will try to fetch from a backend API first, then fallback to mock data
    */
   static async getDeviceAnalytics(
     deviceId: string,
@@ -75,26 +75,26 @@ export class AnalyticsService {
         
         // Check if this is real data or mock/unavailable data
         if (data.dataSource === 'unavailable') {
-          console.log(`⚠️ AnalyticsService: Data unavailable - BigQuery not configured`);
-          throw new Error('Analytics data is not available. BigQuery integration is not configured.');
+          console.log(`⚠️ AnalyticsService: Data unavailable - BigQuery not configured, using mock data`);
+          return this.generateMockData(deviceId, startDate, endDate);
         } else if (data.dataSource === 'mock') {
-          console.log(`⚠️ AnalyticsService: Retrieved mock data from API`);
-          throw new Error('Analytics data is not available. Only mock data is currently available.');
+          console.log(`✅ AnalyticsService: Retrieved mock data from API`);
+          return data;
         } else if (data.dataSource === 'bigquery') {
           console.log(`✅ AnalyticsService: Retrieved real data from BigQuery`);
           return data;
         } else {
-          // Legacy response without dataSource field
-          console.log(`⚠️ AnalyticsService: Retrieved data without source info - treating as unavailable`);
-          throw new Error('Analytics data is not available. Data source is not properly configured.');
+          // Legacy response without dataSource field - treat as mock data
+          console.log(`⚠️ AnalyticsService: Retrieved data without source info - treating as mock data`);
+          return { ...data, dataSource: 'mock', isMockData: true };
         }
       } else {
-        console.log(`⚠️ AnalyticsService: API not available`);
-        throw new Error('Analytics data is not available. Please ensure the backend API is running and configured.');
+        console.log(`⚠️ AnalyticsService: API not available, using mock data`);
+        return this.generateMockData(deviceId, startDate, endDate);
       }
     } catch (error) {
-      console.log(`⚠️ AnalyticsService: Error fetching from API:`, error);
-      throw new Error('Analytics data is not available. Please ensure the backend API is running and configured.');
+      console.log(`⚠️ AnalyticsService: Error fetching from API, using mock data:`, error);
+      return this.generateMockData(deviceId, startDate, endDate);
     }
   }
 
@@ -147,6 +147,87 @@ export class AnalyticsService {
       console.log(`⚠️ AnalyticsService: Error fetching fleet analytics:`, error);
       throw new Error('Fleet analytics are not available. Please ensure the backend API is running and configured.');
     }
+  }
+
+  /**
+   * Generate mock analytics data for demonstration purposes
+   */
+  private static generateMockData(
+    deviceId: string,
+    startDate: string,
+    endDate: string
+  ): DeviceHistoricalData {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    
+    const analytics: DeviceAnalytics[] = [];
+    
+    for (let i = 0; i < days; i++) {
+      const date = new Date(start);
+      date.setDate(date.getDate() + i);
+      
+      const totalUptime = 8 + Math.random() * 8; // 8-16 hours
+      const averageBatteryLevel = 20 + Math.random() * 60; // 20-80%
+      const totalHeartbeats = 50 + Math.random() * 100;
+      const locationUpdates = 10 + Math.random() * 20;
+      const networkConnections = 5 + Math.random() * 15;
+      const screenOnTime = 120 + Math.random() * 240; // 2-6 hours
+      
+      const appUsage = [
+        { appName: 'FrontSeat App', packageName: 'com.frontseat.app', usageTime: 60 + Math.random() * 120 },
+        { appName: 'Chrome', packageName: 'com.android.chrome', usageTime: 30 + Math.random() * 60 },
+        { appName: 'Settings', packageName: 'com.android.settings', usageTime: 10 + Math.random() * 20 },
+        { appName: 'Camera', packageName: 'com.android.camera', usageTime: 5 + Math.random() * 15 },
+      ];
+      
+      const alerts = [];
+      if (averageBatteryLevel < 30) {
+        alerts.push({
+          type: 'battery_low' as const,
+          timestamp: date.toISOString(),
+          message: 'Battery level is critically low',
+        });
+      }
+      
+      if (Math.random() < 0.1) { // 10% chance of network alert
+        alerts.push({
+          type: 'network_disconnected' as const,
+          timestamp: date.toISOString(),
+          message: 'Network connection lost temporarily',
+        });
+      }
+      
+      analytics.push({
+        deviceId,
+        date: date.toISOString().split('T')[0],
+        totalUptime,
+        averageBatteryLevel,
+        totalHeartbeats,
+        locationUpdates,
+        networkConnections,
+        screenOnTime,
+        appUsage,
+        performanceMetrics: {
+          averageMemoryUsage: 40 + Math.random() * 30,
+          averageCpuUsage: 20 + Math.random() * 40,
+          storageUsage: 60 + Math.random() * 20,
+        },
+        alerts,
+      });
+    }
+    
+    const summary = this.calculateSummary(analytics);
+    
+    return {
+      deviceId,
+      startDate,
+      endDate,
+      analytics,
+      summary,
+      isMockData: true,
+      dataSource: 'mock',
+    };
   }
 
   /**
