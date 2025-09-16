@@ -24,3 +24,11 @@ dist-ssr
 *.sw?
 
 .env.local
+
+frontseat-service-account.json
+*-service-account.json
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.*.json
