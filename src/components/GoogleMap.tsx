@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
 import { Device } from '@/types/device';
+import { formatDateTimePST } from '@/lib/dateUtils';
 
 interface GoogleMapProps {
   devices: Device[];
@@ -68,7 +69,7 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
                   <h3 style="margin: 0 0 5px 0; font-size: 16px; color: #333;">${device.deviceName}</h3>
                   <p style="margin: 0; font-size: 12px; color: #666;">Status: <strong>${device.online ? 'Online' : 'Offline'}</strong></p>
                   <p style="margin: 0; font-size: 12px; color: #666;">Battery: ${device.batteryLevel}% ${device.charging ? '⚡' : ''}</p>
-                  <p style="margin: 0; font-size: 12px; color: #666;">Last Seen: ${new Date(device.lastSeen).toLocaleString()}</p>
+                  <p style="margin: 0; font-size: 12px; color: #666;">Last Seen: ${formatDateTimePST(device.lastSeen)}</p>
                 </div>
               `);
               infoWindowRef.current.open(mapInstance.current, marker);
@@ -102,7 +103,7 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
             <h3 style="margin: 0 0 5px 0; font-size: 16px; color: #333;">${selectedDevice.deviceName}</h3>
             <p style="margin: 0; font-size: 12px; color: #666;">Status: <strong>${selectedDevice.online ? 'Online' : 'Offline'}</strong></p>
             <p style="margin: 0; font-size: 12px; color: #666;">Battery: ${selectedDevice.batteryLevel}% ${selectedDevice.charging ? '⚡' : ''}</p>
-            <p style="margin: 0; font-size: 12px; color: #666;">Last Seen: ${new Date(selectedDevice.lastSeen).toLocaleString()}</p>
+            <p style="margin: 0; font-size: 12px; color: #666;">Last Seen: ${formatDateTimePST(selectedDevice.lastSeen)}</p>
           </div>
         `);
         infoWindowRef.current.open(mapInstance.current, marker);

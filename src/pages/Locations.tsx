@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatDateTimePST } from '@/lib/dateUtils';
 import {
   MapPin,
   Search,
@@ -343,7 +344,7 @@ export default function Locations() {
               <div className="space-y-2">
                 <h4 className="font-medium text-foreground">Last Seen</h4>
                 <div className="text-sm text-muted-foreground">
-                  {new Date(selectedDevice.lastSeen).toLocaleString()}
+                  {formatDateTimePST(selectedDevice.lastSeen)}
                 </div>
               </div>
               
