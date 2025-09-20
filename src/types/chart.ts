@@ -90,5 +90,4 @@ export const TIME_RANGES: TimeRange[] = [
   { value: '30d', label: 'Last 30 days', days: 30 },
   { value: '90d', label: 'Last 90 days', days: 90 },
   { value: '1y', label: 'Last year', days: 365 },
-  { value: 'custom', label: 'Custom Range' },
 ];

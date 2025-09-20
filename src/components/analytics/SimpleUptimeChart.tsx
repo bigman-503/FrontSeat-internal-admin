@@ -164,7 +164,7 @@ export function SimpleUptimeChart({
                       ? 'bg-green-500' 
                       : 'bg-red-500'
                   }`}
-                  title={`${dateStr} at ${time12Hour}: ${point.isOnline === 1 ? 'Online' : 'Offline'}`}
+                  title={`${dateStr} at ${time12Hour}: ${point.isOnline === 1 ? 'Online' : 'Offline'} (${point.heartbeatCount || 0} heartbeats)`}
                 />
               );
             })}
@@ -227,6 +227,7 @@ export function SimpleUptimeChart({
                   </div>
                   <div className="text-sm text-gray-600">
                     {point.isOnline === 1 ? 'Online' : 'Offline'}
+                    <span className="ml-2">({point.heartbeatCount || 0} heartbeats)</span>
                     {point.batteryLevel > 0 && (
                       <span className="ml-2">({point.batteryLevel}% battery)</span>
                     )}

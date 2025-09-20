@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React from 'react';
 import {
   Dialog,
   DialogContent,
@@ -11,17 +11,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Smartphone, Activity, Clock, MapPin, BarChart3, Battery } from 'lucide-react';
 import { Device } from '@/types/device';
 import { formatDatePST, getCurrentTimePST } from '@/lib/dateUtils';
-import { generateCSVData, downloadCSV, calculateZoomWindow } from '@/utils/analytics/chartFormatters';
 
 // Hooks
-import { useDeviceAnalytics } from '@/hooks/useDeviceAnalytics';
-import { useChartControls } from '@/hooks/useChartControls';
 import { useUptimeData } from '@/hooks/useUptimeData';
-import { useLocationData } from '@/hooks/useLocationData';
 
 // Components
 import { AnalyticsControls } from './AnalyticsControls';
-import { UptimeStats } from './UptimeStats';
 import { SimpleUptimeChart } from './SimpleUptimeChart';
 import { LoadingState } from './LoadingState';
 import { ErrorState } from './ErrorState';
@@ -33,96 +28,34 @@ interface DeviceAnalyticsDialogProps {
 }
 
 export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnalyticsDialogProps) {
-  // Chart controls
-  const {
-    controls,
-    setTimeRange,
-    setCustomDates,
-    setUseCustomRange,
-    setTimeInterval,
-    scrollLeft,
-    scrollRight,
-    resetZoom,
-    onZoomChange
-  } = useChartControls();
-
-
   // Data fetching - now using simplified uptime data hook
   const {
     uptimeData,
-    uptimeDataWithZoom,
-    uptimeStats,
     devicePatterns,
     dateRange,
     loading,
     error,
-    refreshData,
     isMockData,
     dataSource
   } = useUptimeData({
     device,
-    timeRange: controls.timeRange,
-    timeInterval: controls.timeInterval,
-    useCustomRange: controls.useCustomRange,
-    customStartDate: controls.customStartDate,
-    customEndDate: controls.customEndDate
+    timeRange: '24h', // Fixed to 24 hours
+    timeInterval: 15, // Fixed to 15 minutes
+    useCustomRange: false,
+    customStartDate: '',
+    customEndDate: ''
   });
 
   // Debug logging
   console.log('🔍 DeviceAnalyticsDialog data:', {
     uptimeDataLength: uptimeData.length,
-    uptimeDataWithZoomLength: uptimeDataWithZoom.length,
-    timeRange: controls.timeRange,
-    timeInterval: controls.timeInterval,
-    zoomLevel: controls.zoomLevel,
+    timeRange: '24h',
+    timeInterval: 15,
     sampleUptimeData: uptimeData.slice(0, 3),
-    sampleUptimeDataWithZoom: uptimeDataWithZoom.slice(0, 3),
     isMockData,
     dataSource
   });
 
-  // Export functionality
-  const handleExport = useCallback(async () => {
-    if (!uptimeData.length) return;
-    
-    try {
-      const csvContent = generateCSVData(uptimeData);
-      const filename = `device-uptime-${device?.deviceId}-${new Date().toISOString().split('T')[0]}.csv`;
-      downloadCSV(csvContent, filename);
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
-    }
-  }, [uptimeData, device?.deviceId]);
-
-  // Chart click handler
-  const handleChartClick = useCallback((data: any) => {
-    if (data && data.activePayload && data.activePayload[0]) {
-      const clickedIndex = data.activePayload[0].payload.index;
-      const { start, end } = calculateZoomWindow(clickedIndex, uptimeData.length);
-      onZoomChange(2); // Set zoom level
-    }
-  }, [uptimeData.length, onZoomChange]);
-
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (controls.zoomLevel > 1) {
-        if (event.key === 'ArrowLeft') {
-          event.preventDefault();
-          scrollLeft();
-        } else if (event.key === 'ArrowRight') {
-          event.preventDefault();
-          scrollRight();
-        }
-      }
-    };
-
-    if (open) {
-      document.addEventListener('keydown', handleKeyDown);
-      return () => document.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [open, controls.zoomLevel, scrollLeft, scrollRight]);
 
   if (!device) return null;
 
@@ -136,41 +69,21 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
           </DialogTitle>
           <DialogDescription>
             Historical performance data and analytics for device {device.deviceId}
-            {controls.timeRange === '24h' && (
-              <span className="block mt-2 text-sm font-medium text-blue-600">
-                📅 Viewing: {formatDatePST(getCurrentTimePST(), { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })} (24-hour period)
-              </span>
-            )}
-            {controls.timeRange === '7d' && (
-              <span className="block mt-2 text-sm font-medium text-blue-600">
-                📅 Viewing: Last 7 days (7-day period)
-              </span>
-            )}
+            <span className="block mt-2 text-sm font-medium text-blue-600">
+              📅 Viewing: {formatDatePST(getCurrentTimePST(), { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })} (24-hour period)
+            </span>
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Controls */}
           <AnalyticsControls
-            controls={controls}
-            onTimeRangeChange={setTimeRange}
-            onCustomDatesChange={setCustomDates}
-            onUseCustomRangeChange={setUseCustomRange}
-            onTimeIntervalChange={setTimeInterval}
-            onRefresh={refreshData}
-            onExport={handleExport}
-            onResetZoom={resetZoom}
-            onScrollLeft={scrollLeft}
-            onScrollRight={scrollRight}
-            onZoomChange={onZoomChange}
             loading={loading}
-            dataPointsCount={uptimeDataWithZoom.length}
-            totalDataPoints={uptimeData.length}
           />
 
           {/* Loading State */}
@@ -199,9 +112,6 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
                 </TabsList>
 
                 <TabsContent value="uptime" className="space-y-4">
-                  {/* Uptime Statistics */}
-                  <UptimeStats stats={uptimeStats} />
-
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -214,17 +124,17 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
                         <br />
                         <span className="text-sm text-muted-foreground">
                           • Gaps &gt; 3 minutes without heartbeats indicate device was off
-                          • Time intervals: {controls.timeInterval} minutes
+                          • Time intervals: 15 minutes
                           • Data points: {uptimeData.length} of {uptimeData.length}
-                          • Each bar represents a {controls.timeInterval}-minute period
+                          • Each bar represents a 15-minute period
                         </span>
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <SimpleUptimeChart
                         data={uptimeData}
-                        timeRange={controls.timeRange}
-                        timeInterval={controls.timeInterval}
+                        timeRange="24h"
+                        timeInterval={15}
                         dateRange={dateRange}
                       />
                     </CardContent>
