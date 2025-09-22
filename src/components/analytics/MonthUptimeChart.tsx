@@ -150,15 +150,17 @@ export function MonthUptimeChart({
       </div>
 
       {/* Calendar View */}
-      <Card>
-        <CardHeader>
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50">
+        <CardHeader className="pb-6">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-3 text-2xl font-bold text-gray-900">
+                <div className="p-2 bg-blue-500 rounded-lg">
+                  <Calendar className="h-6 w-6 text-white" />
+                </div>
                 {currentMonth}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-gray-600 mt-2">
                 Click on any day to view detailed 24-hour timeline
               </CardDescription>
             </div>
@@ -167,36 +169,36 @@ export function MonthUptimeChart({
                 variant="outline"
                 size="sm"
                 onClick={onPreviousMonth}
-                className="h-8 w-8 p-0"
+                className="h-10 w-10 p-0 hover:bg-blue-50 hover:border-blue-300 transition-colors"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-5 w-5" />
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={onNextMonth}
-                className="h-8 w-8 p-0"
+                className="h-10 w-10 p-0 hover:bg-blue-50 hover:border-blue-300 transition-colors"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-5 w-5" />
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           <div className="space-y-4">
             {/* Day Headers */}
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid grid-cols-7 gap-2 mb-4">
               {dayNames.map(day => (
-                <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
+                <div key={day} className="p-3 text-center text-sm font-bold text-gray-600 bg-gray-50 rounded-lg">
                   {day}
                 </div>
               ))}
             </div>
 
             {/* Calendar Grid */}
-            <div className="space-y-1">
+            <div className="space-y-2">
               {weeks.map((week, weekIndex) => (
-                <div key={weekIndex} className="grid grid-cols-7 gap-1">
+                <div key={weekIndex} className="grid grid-cols-7 gap-2">
                   {week.map((day, dayIndex) => (
                     <div
                       key={`${weekIndex}-${dayIndex}`}
@@ -207,19 +209,19 @@ export function MonthUptimeChart({
                         }
                       }}
                       className={`
-                        relative p-2 h-16 rounded-lg border transition-all duration-200 cursor-pointer
+                        relative p-3 h-20 rounded-xl border-2 transition-all duration-300 cursor-pointer group
                         ${day.isCurrentMonth 
                           ? selectedDate === day.date
-                            ? 'border-blue-500 bg-blue-50 shadow-md'
-                            : 'border-gray-200 hover:border-gray-300 bg-white hover:shadow-sm'
-                          : 'border-gray-100 bg-gray-50 cursor-not-allowed'
+                            ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-blue-100 shadow-lg scale-105'
+                            : 'border-gray-200 hover:border-gray-400 bg-white hover:shadow-md hover:scale-102'
+                          : 'border-gray-100 bg-gray-50 cursor-not-allowed opacity-50'
                         }
-                        ${day.isToday ? 'ring-2 ring-blue-300' : ''}
+                        ${day.isToday ? 'ring-2 ring-blue-300 ring-opacity-50' : ''}
                       `}
                     >
-                      {/* Day Number */}
-                      <div className="flex items-center justify-between mb-1">
-                        <span className={`text-sm font-medium ${
+                      {/* Day Number and Status */}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-sm font-bold ${
                           day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
                         }`}>
                           {day.dayOfMonth}
@@ -234,23 +236,44 @@ export function MonthUptimeChart({
                         </div>
                       </div>
 
-                      {/* Uptime Indicator */}
+                      {/* Uptime Visual Indicator */}
                       {day.isCurrentMonth && (
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-600">
+                        <div className="space-y-2">
+                          {/* Large Uptime Percentage */}
+                          <div className="text-center">
+                            <span className={`text-lg font-bold ${
+                              day.uptime >= 80 ? 'text-green-600' :
+                              day.uptime >= 60 ? 'text-yellow-600' :
+                              day.uptime >= 40 ? 'text-orange-600' :
+                              'text-red-600'
+                            }`}>
                               {day.uptime.toFixed(0)}%
                             </span>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-1">
+                          
+                          {/* Visual Status Bar */}
+                          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                             <div
-                              className={`h-1 rounded-full transition-all duration-300 ${getUptimeColor(day.uptime)} ${getUptimeIntensity(day.uptime)}`}
+                              className={`h-2 rounded-full transition-all duration-500 ${
+                                day.uptime >= 80 ? 'bg-gradient-to-r from-green-400 to-green-600' :
+                                day.uptime >= 60 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
+                                day.uptime >= 40 ? 'bg-gradient-to-r from-orange-400 to-orange-600' :
+                                'bg-gradient-to-r from-red-400 to-red-600'
+                              }`}
                               style={{ width: `${Math.min(100, day.uptime)}%` }}
                             />
                           </div>
-                          <div className="flex justify-between text-xs">
-                            <span className="text-green-600">↑{day.onlinePeriods}</span>
-                            <span className="text-red-600">↓{day.offlinePeriods}</span>
+                          
+                          {/* Activity Summary */}
+                          <div className="flex justify-center items-center gap-2 text-xs">
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              <span className="text-green-600 font-medium">{day.onlinePeriods}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                              <span className="text-red-600 font-medium">{day.offlinePeriods}</span>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -261,22 +284,22 @@ export function MonthUptimeChart({
             </div>
 
             {/* Legend */}
-            <div className="flex items-center justify-center gap-6 pt-4 border-t">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-green-500 rounded"></div>
-                <span className="text-sm text-gray-600">Excellent (80%+)</span>
+            <div className="flex items-center justify-center gap-8 pt-6 border-t border-gray-200">
+              <div className="flex items-center gap-3 px-4 py-2 bg-green-50 rounded-lg border border-green-200">
+                <div className="w-4 h-4 bg-gradient-to-r from-green-400 to-green-600 rounded-full"></div>
+                <span className="text-sm font-medium text-green-700">Excellent (80%+)</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-yellow-500 rounded"></div>
-                <span className="text-sm text-gray-600">Good (60-79%)</span>
+              <div className="flex items-center gap-3 px-4 py-2 bg-yellow-50 rounded-lg border border-yellow-200">
+                <div className="w-4 h-4 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full"></div>
+                <span className="text-sm font-medium text-yellow-700">Good (60-79%)</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-orange-500 rounded"></div>
-                <span className="text-sm text-gray-600">Fair (40-59%)</span>
+              <div className="flex items-center gap-3 px-4 py-2 bg-orange-50 rounded-lg border border-orange-200">
+                <div className="w-4 h-4 bg-gradient-to-r from-orange-400 to-orange-600 rounded-full"></div>
+                <span className="text-sm font-medium text-orange-700">Fair (40-59%)</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-red-500 rounded"></div>
-                <span className="text-sm text-gray-600">Poor (&lt;40%)</span>
+              <div className="flex items-center gap-3 px-4 py-2 bg-red-50 rounded-lg border border-red-200">
+                <div className="w-4 h-4 bg-gradient-to-r from-red-400 to-red-600 rounded-full"></div>
+                <span className="text-sm font-medium text-red-700">Poor (&lt;40%)</span>
               </div>
             </div>
           </div>
