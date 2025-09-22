@@ -108,17 +108,49 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
   const getFilteredDayData = React.useCallback((data: any[], selectedDate: string) => {
     if (!selectedDate || !data) return [];
     
-    const targetDate = new Date(selectedDate);
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
+    // selectedDate is in YYYY-MM-DD format (Pacific date)
+    // We need to find data points that fall within this Pacific day
     
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Create start and end of day in Pacific timezone (PDT = UTC-7)
+    const startOfDayPacific = new Date(selectedDate + 'T00:00:00-07:00');
+    const endOfDayPacific = new Date(selectedDate + 'T23:59:59.999-07:00');
     
-    return data.filter(point => {
-      const pointDate = new Date(point.time);
-      return pointDate >= startOfDay && pointDate <= endOfDay;
+    // These Date objects already represent the correct UTC timestamps
+    const utcStart = startOfDayPacific;
+    const utcEnd = endOfDayPacific;
+    
+    console.log('🔍 Filtering day data (corrected):', {
+      selectedDate,
+      startOfDayPacific: startOfDayPacific.toISOString(),
+      endOfDayPacific: endOfDayPacific.toISOString(),
+      utcStart: utcStart.toISOString(),
+      utcEnd: utcEnd.toISOString(),
+      dataLength: data.length
     });
+    
+    const filteredData = data.filter(point => {
+      const pointDate = new Date(point.time);
+      const isInRange = pointDate >= utcStart && pointDate <= utcEnd;
+      
+      if (isInRange) {
+        console.log('✅ Found matching point:', {
+          pointTime: point.time,
+          pointDate: pointDate.toISOString(),
+          isOnline: point.isOnline,
+          heartbeatCount: point.heartbeatCount
+        });
+      }
+      
+      return isInRange;
+    });
+    
+    console.log('📊 Filtered day data result:', {
+      originalLength: data.length,
+      filteredLength: filteredData.length,
+      onlineCount: filteredData.filter(p => p.isOnline === 1).length
+    });
+    
+    return filteredData;
   }, []);
 
   // Helper function to get date range for a specific day

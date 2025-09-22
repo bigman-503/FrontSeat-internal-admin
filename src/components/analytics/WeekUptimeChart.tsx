@@ -53,27 +53,64 @@ export function WeekUptimeChart({ data, onDayClick, selectedDate }: WeekUptimeCh
     
     // Get current time in PST to match backend data
     const now = new Date();
-    const nowPST = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
+    const todayPSTDateString = now.toLocaleString("en-US", {
+      timeZone: "America/Los_Angeles",
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const [month, day, year] = todayPSTDateString.split('/');
+    const todayStr = `${year}-${month}-${day}`;
     
-    // Generate 7 days going back from today (PST)
+    console.log('🔍 Generating empty week data:', {
+      now: new Date().toISOString(),
+      todayPSTDateString: todayPSTDateString,
+      todayStr: todayStr
+    });
+    
     for (let i = 6; i >= 0; i--) {
-      const date = new Date(nowPST);
-      date.setDate(nowPST.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-      
-      emptyData.push({
-        date: dateStr,
-        dayName: dayName,
-        uptime: 0,
-        isOnline: false,
-        totalHeartbeats: 0,
-        onlinePeriods: 0,
-        offlinePeriods: 96, // 24 hours * 4 (15-minute intervals)
-        peakActivityHour: 0,
-        averageBatteryLevel: 0
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const pstDateString = date.toLocaleString("en-US", {
+        timeZone: "America/Los_Angeles",
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
       });
+      const [month, day, year] = pstDateString.split('/');
+      const dateStr = `${year}-${month}-${day}`;
+      const dayName = date.toLocaleDateString('en-US', { 
+        weekday: 'long',
+        timeZone: 'America/Los_Angeles'
+      });
+      
+      console.log('📅 Checking date:', {
+        i: i,
+        dateStr: dateStr,
+        dayName: dayName,
+        isTodayOrPast: dateStr <= todayStr
+      });
+      
+      // Only add days that are today or in the past
+      if (dateStr <= todayStr) {
+        emptyData.push({
+          date: dateStr,
+          dayName: dayName,
+          uptime: 0,
+          isOnline: false,
+          totalHeartbeats: 0,
+          onlinePeriods: 0,
+          offlinePeriods: 96, // 24 hours * 4 (15-minute intervals)
+          peakActivityHour: 0,
+          averageBatteryLevel: 0
+        });
+      }
     }
+    
+    console.log('📊 Empty data generated:', {
+      count: emptyData.length,
+      dates: emptyData.map(d => d.date)
+    });
     
     return emptyData;
   };

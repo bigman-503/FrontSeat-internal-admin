@@ -129,6 +129,17 @@ export const useUptimeData = ({
         sampleData: result.uptimeData.slice(0, 3),
         dateRange: result.dateRange
       });
+      
+      // Debug: Check if any data points are online
+      const onlineData = result.uptimeData.filter(d => d.isOnline === 1);
+      const offlineData = result.uptimeData.filter(d => d.isOnline === 0);
+      console.log('🔍 Data analysis:', {
+        totalDataPoints: result.uptimeData.length,
+        onlineCount: onlineData.length,
+        offlineCount: offlineData.length,
+        onlineData: onlineData.slice(0, 3),
+        offlineData: offlineData.slice(0, 3)
+      });
 
       setData(result);
     } catch (err) {
@@ -180,38 +191,107 @@ export const useUptimeData = ({
 function getDefaultStartDate(timeRange: string): string {
   // Get current time in PST
   const now = new Date();
-  const nowPST = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
+  
+  console.log('🕐 getDefaultStartDate called:', {
+    timeRange,
+    nowUTC: now.toISOString(),
+    nowPST: now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
+  });
   
   switch (timeRange) {
     case '24h':
-      // For 24h view, go back 24 hours from current PST time
-      const yesterdayPST = new Date(nowPST);
-      yesterdayPST.setDate(yesterdayPST.getDate() - 1);
-      return yesterdayPST.toISOString().split('T')[0];
+      // For 24h view, start from today to include both today and tomorrow (24-hour window)
+      const today24h = new Date(now);
+      const today24hPSTString = today24h.toLocaleString("en-US", {
+        timeZone: "America/Los_Angeles",
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      const [tMonth, tDay, tYear] = today24hPSTString.split('/');
+      const result = `${tYear}-${tMonth}-${tDay}`;
+      console.log('🕐 24h start date calculation:', {
+        today24hPSTString,
+        tMonth, tDay, tYear,
+        result
+      });
+      return result;
     case '7d':
-      nowPST.setDate(nowPST.getDate() - 6); // Go back 6 days to include today (7 days total)
-      break;
+      // For 7d view, go back 6 days to include today (7 days total)
+      const startDate7d = new Date(now);
+      startDate7d.setDate(startDate7d.getDate() - 6);
+      const start7dPSTString = startDate7d.toLocaleString("en-US", {
+        timeZone: "America/Los_Angeles",
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      const [s7Month, s7Day, s7Year] = start7dPSTString.split('/');
+      return `${s7Year}-${s7Month}-${s7Day}`;
     case '30d':
-      nowPST.setDate(nowPST.getDate() - 29); // Go back 29 days to include today (30 days total)
-      break;
+      // For 30d view, go back 29 days to include today (30 days total)
+      const startDate30d = new Date(now);
+      startDate30d.setDate(startDate30d.getDate() - 29);
+      const start30dPSTString = startDate30d.toLocaleString("en-US", {
+        timeZone: "America/Los_Angeles",
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      const [s30Month, s30Day, s30Year] = start30dPSTString.split('/');
+      return `${s30Year}-${s30Month}-${s30Day}`;
     default:
-      nowPST.setDate(nowPST.getDate() - 1);
+      const defaultStart = new Date(now);
+      defaultStart.setDate(defaultStart.getDate() - 1);
+      const defaultPSTString = defaultStart.toLocaleString("en-US", {
+        timeZone: "America/Los_Angeles",
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      const [dMonth, dDay, dYear] = defaultPSTString.split('/');
+      return `${dYear}-${dMonth}-${dDay}`;
   }
-  
-  return nowPST.toISOString().split('T')[0];
 }
 
 function getDefaultEndDate(timeRange: string): string {
   // Get current time in PST
   const now = new Date();
-  const nowPST = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
+  
+  console.log('🕐 getDefaultEndDate called:', {
+    timeRange,
+    nowUTC: now.toISOString(),
+    nowPST: now.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
+  });
   
   if (timeRange === '24h') {
-    // For 24h view, use current date in PST
-    return nowPST.toISOString().split('T')[0];
+    // For 24h view, include tomorrow's data to capture the full 24-hour window
+    const tomorrow24h = new Date(now);
+    tomorrow24h.setDate(tomorrow24h.getDate() + 1);
+    const tomorrow24hPSTString = tomorrow24h.toLocaleString("en-US", {
+      timeZone: "America/Los_Angeles",
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const [tmMonth, tmDay, tmYear] = tomorrow24hPSTString.split('/');
+    const result = `${tmYear}-${tmMonth}-${tmDay}`;
+    console.log('🕐 24h end date calculation:', {
+      tomorrow24hPSTString,
+      tmMonth, tmDay, tmYear,
+      result
+    });
+    return result;
   }
   
-  return nowPST.toISOString().split('T')[0];
+  const nowPSTString = now.toLocaleString("en-US", {
+    timeZone: "America/Los_Angeles",
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  const [month, day, year] = nowPSTString.split('/');
+  return `${year}-${month}-${day}`;
 }
 
 function getEmptyStats(): UptimeStats {

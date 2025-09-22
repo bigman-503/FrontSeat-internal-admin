@@ -1,5 +1,5 @@
 import { UptimeDataPoint, LocationDataPoint, HeartbeatData, UptimeStats, DevicePatterns } from '@/types/analytics';
-import { getCurrentTimePST, formatDatePST } from '@/lib/dateUtils';
+import { getCurrentTimePST, formatDatePST, getDatePST } from '@/lib/dateUtils';
 
 /**
  * Safely parse timestamps from various formats (including BigQuery)
@@ -25,16 +25,40 @@ export const parseTimestamp = (timestamp: any): Date | null => {
     return null;
   }
   
-  // Convert UTC to PST (UTC-8)
-  const pstDate = new Date(utcDate.getTime() - (8 * 60 * 60 * 1000));
+  // Convert UTC to Pacific timezone (automatically handles PST/PDT)
+  const pacificTimeString = utcDate.toLocaleString("en-US", {
+    timeZone: "America/Los_Angeles",
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  
+  // Parse the Pacific time string back to a Date object
+  const [datePart, timePart] = pacificTimeString.split(', ');
+  const [month, day, year] = datePart.split('/');
+  const [hour, minute, second] = timePart.split(':');
+  
+  // Create a date string in Pacific timezone and parse it
+  const pacificDateString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:${second.padStart(2, '0')}`;
+  
+  // Create a date object that represents the Pacific time
+  // The key is to create a date in local timezone that matches the Pacific time
+  const pacificDate = new Date();
+  pacificDate.setFullYear(parseInt(year), parseInt(month) - 1, parseInt(day));
+  pacificDate.setHours(parseInt(hour), parseInt(minute), parseInt(second), 0);
   
   console.log('🕐 parseTimestamp result:', {
     original: timestampStr,
     utc: utcDate.toISOString(),
-    pst: pstDate.toISOString()
+    pacificTimeString,
+    pacificDate: pacificDate.toISOString()
   });
   
-  return pstDate;
+  return pacificDate;
 };
 
 /**
@@ -175,16 +199,16 @@ const getTimeRange = (timeRange: string, sortedData: any[], timeInterval: number
   let startTime: Date, endTime: Date;
   
   if (timeRange === '24h') {
-    // Use today's PST date for 24h view
-    const now = new Date();
-    const pstOffset = -8 * 60; // PST is UTC-8 (in minutes)
-    const todayPST = new Date(now.getTime() + (pstOffset * 60 * 1000));
+    // Use today's Pacific date for 24h view
+    const today = getCurrentTimePST();
+    const todayStr = getDatePST(today);
+    const todayDate = new Date(todayStr + 'T00:00:00');
     
-    startTime = new Date(todayPST);
-    startTime.setHours(0, 0, 0, 0); // 00:00:00 PST
+    startTime = new Date(todayDate);
+    startTime.setHours(0, 0, 0, 0);
     
     endTime = new Date(startTime);
-    endTime.setDate(endTime.getDate() + 1); // Next day 00:00
+    endTime.setDate(endTime.getDate() + 1);
   } else {
     // For other ranges, use actual data range
     startTime = sortedData[0].parsedTime!;

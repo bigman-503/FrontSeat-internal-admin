@@ -42,8 +42,16 @@ export function aggregateToDailySummaries(uptimeData: UptimeDataPoint[]): DaySum
   const dailyGroups = new Map<string, UptimeDataPoint[]>();
   
   uptimeData.forEach(point => {
-    const date = new Date(point.time);
-    const dateKey = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    // Convert UTC time to PST for proper date grouping
+    const utcDate = new Date(point.time);
+    const pstDateString = utcDate.toLocaleString("en-US", {
+      timeZone: "America/Los_Angeles",
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const [month, day, year] = pstDateString.split('/');
+    const dateKey = `${year}-${month}-${day}`; // YYYY-MM-DD format in PST
     
     if (!dailyGroups.has(dateKey)) {
       dailyGroups.set(dateKey, []);
@@ -60,8 +68,12 @@ export function aggregateToDailySummaries(uptimeData: UptimeDataPoint[]): DaySum
   const summaries: DaySummary[] = [];
   
   for (const [dateKey, intervals] of dailyGroups) {
-    const date = new Date(dateKey);
-    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+    // Create date in PST timezone for correct day name calculation
+    const date = new Date(dateKey + 'T00:00:00'); // Ensure we're working with the correct date
+    const dayName = date.toLocaleDateString('en-US', { 
+      weekday: 'long',
+      timeZone: 'America/Los_Angeles'
+    });
     
     // Calculate uptime percentage
     const totalIntervals = intervals.length;
@@ -127,8 +139,35 @@ export function aggregateToDailySummaries(uptimeData: UptimeDataPoint[]): DaySum
     sampleSummary: summaries[0]
   });
   
+  // Filter out future days (only show today and past days)
+  const today = new Date();
+  const todayPSTDateString = today.toLocaleString("en-US", {
+    timeZone: "America/Los_Angeles",
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  const [month, day, year] = todayPSTDateString.split('/');
+  const todayStr = `${year}-${month}-${day}`;
+  
+  console.log('🔍 Filtering future days:', {
+    currentTime: today.toISOString(),
+    todayPSTDateString: todayPSTDateString,
+    todayStr: todayStr,
+    allDates: summaries.map(s => s.date),
+    futureDates: summaries.filter(s => s.date > todayStr).map(s => s.date)
+  });
+  
+  const filteredSummaries = summaries.filter(summary => summary.date <= todayStr);
+  
+  console.log('📅 After filtering:', {
+    originalCount: summaries.length,
+    filteredCount: filteredSummaries.length,
+    filteredDates: filteredSummaries.map(s => s.date)
+  });
+  
   // Sort by date (most recent first)
-  const sortedSummaries = summaries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const sortedSummaries = filteredSummaries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   
   // For week view, limit to exactly 7 days (most recent 7 days)
   const limitedSummaries = sortedSummaries.slice(0, 7);

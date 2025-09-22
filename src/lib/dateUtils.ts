@@ -1,32 +1,46 @@
 /**
- * Date utilities for handling PST timezone consistently across the application
+ * Date utilities for handling Pacific timezone (PST/PDT) consistently across the application
+ * Automatically handles both PST (UTC-8) and PDT (UTC-7) based on the current date
  */
 
 /**
- * Get today's date in PST timezone as YYYY-MM-DD format
+ * Get today's date in Pacific timezone as YYYY-MM-DD format
  */
 export function getTodayPST(): string {
   const now = new Date();
-  const pstDate = new Date(now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
-  const formattedDate = pstDate.toISOString().split('T')[0];
+  const pacificDateString = now.toLocaleString("en-US", {
+    timeZone: "America/Los_Angeles",
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  const [month, day, year] = pacificDateString.split('/');
+  const formattedDate = `${year}-${month}-${day}`;
+  
   console.log('📅 getTodayPST called:', { 
     now: now.toISOString(), 
-    pstDate: pstDate.toISOString(), 
+    pacificDateString,
     formattedDate 
   });
   return formattedDate;
 }
 
 /**
- * Get a date in PST timezone as YYYY-MM-DD format
+ * Get a date in Pacific timezone as YYYY-MM-DD format
  */
 export function getDatePST(date: Date): string {
-  const pstDate = new Date(date.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
-  return pstDate.toISOString().split('T')[0];
+  const pacificDateString = date.toLocaleString("en-US", {
+    timeZone: "America/Los_Angeles",
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  const [month, day, year] = pacificDateString.split('/');
+  return `${year}-${month}-${day}`;
 }
 
 /**
- * Format a date for display in PST timezone
+ * Format a date for display in Pacific timezone
  */
 export function formatDatePST(date: Date | string, options?: Intl.DateTimeFormatOptions): string {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -43,7 +57,7 @@ export function formatDatePST(date: Date | string, options?: Intl.DateTimeFormat
 }
 
 /**
- * Format a date and time for display in PST timezone
+ * Format a date and time for display in Pacific timezone
  */
 export function formatDateTimePST(date: Date | string, options?: Intl.DateTimeFormatOptions): string {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -60,56 +74,57 @@ export function formatDateTimePST(date: Date | string, options?: Intl.DateTimeFo
 }
 
 /**
- * Get a date range for different time periods in PST
+ * Get a date range for different time periods in Pacific timezone
  */
 export function getDateRangePST(timeRange: string): { startDate: string; endDate: string } {
-  const today = new Date();
-  const todayPST = new Date(today.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+  const now = new Date();
   
   switch (timeRange) {
     case '24h':
+      const today24h = getTodayPST();
       return {
-        startDate: getDatePST(todayPST),
-        endDate: getDatePST(todayPST)
+        startDate: today24h,
+        endDate: today24h
       };
     case '7d':
-      const sevenDaysAgo = new Date(todayPST);
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const sevenDaysAgo = new Date(now);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6); // 6 days ago + today = 7 days
       return {
         startDate: getDatePST(sevenDaysAgo),
-        endDate: getDatePST(todayPST)
+        endDate: getTodayPST()
       };
     case '30d':
-      const thirtyDaysAgo = new Date(todayPST);
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const thirtyDaysAgo = new Date(now);
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29); // 29 days ago + today = 30 days
       return {
         startDate: getDatePST(thirtyDaysAgo),
-        endDate: getDatePST(todayPST)
+        endDate: getTodayPST()
       };
     case '90d':
-      const ninetyDaysAgo = new Date(todayPST);
-      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+      const ninetyDaysAgo = new Date(now);
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 89); // 89 days ago + today = 90 days
       return {
         startDate: getDatePST(ninetyDaysAgo),
-        endDate: getDatePST(todayPST)
+        endDate: getTodayPST()
       };
     case '1y':
-      const oneYearAgo = new Date(todayPST);
+      const oneYearAgo = new Date(now);
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
       return {
         startDate: getDatePST(oneYearAgo),
-        endDate: getDatePST(todayPST)
+        endDate: getTodayPST()
       };
     default:
+      const today = getTodayPST();
       return {
-        startDate: getDatePST(todayPST),
-        endDate: getDatePST(todayPST)
+        startDate: today,
+        endDate: today
       };
   }
 }
 
 /**
- * Check if a date is today in PST
+ * Check if a date is today in Pacific timezone
  */
 export function isTodayPST(date: Date | string): boolean {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -119,94 +134,81 @@ export function isTodayPST(date: Date | string): boolean {
 }
 
 /**
- * Get the current time in PST
+ * Get the current time in Pacific timezone
  */
 export function getCurrentTimePST(): Date {
   const now = new Date();
-  const pstTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+  const pacificTimeString = now.toLocaleString("en-US", { 
+    timeZone: "America/Los_Angeles",
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
   
-  // Fallback if timezone conversion fails
-  if (isNaN(pstTime.getTime())) {
-    const pstOffset = -8 * 60; // PST is UTC-8 (in minutes)
-    return new Date(now.getTime() + (pstOffset * 60 * 1000));
-  }
+  // Parse the Pacific time string back to a Date object
+  const [datePart, timePart] = pacificTimeString.split(', ');
+  const [month, day, year] = datePart.split('/');
+  const [hour, minute, second] = timePart.split(':');
   
-  return pstTime;
+  // Create a new Date object in the local timezone that represents the Pacific time
+  const pacificDate = new Date(
+    parseInt(year), 
+    parseInt(month) - 1, 
+    parseInt(day), 
+    parseInt(hour), 
+    parseInt(minute), 
+    parseInt(second)
+  );
+  
+  return pacificDate;
 }
 
 /**
- * Convert PST date to UTC date range for BigQuery queries
- * This ensures we capture all records for a PST date regardless of timezone
+ * Convert Pacific date to UTC date range for BigQuery queries
+ * This ensures we capture all records for a Pacific date regardless of timezone
  */
 export function getDateRangeForBigQuery(timeRange: string): { startDate: string; endDate: string } {
-  // Get current date in PST timezone using a more reliable method
   const now = new Date();
-  const pstOffset = -8 * 60; // PST is UTC-8 (in minutes)
-  const pstTime = new Date(now.getTime() + (pstOffset * 60 * 1000));
-  
-  console.log('🔍 getDateRangeForBigQuery:', { 
-    timeRange, 
-    now: now.toISOString(), 
-    pstTime: pstTime.toISOString() 
-  });
   
   switch (timeRange) {
     case '24h':
-      // For 24h, we want to capture the full PST day
-      const startOfDayPST = new Date(pstTime);
-      startOfDayPST.setHours(0, 0, 0, 0);
-      const endOfDayPST = new Date(pstTime);
-      endOfDayPST.setHours(23, 59, 59, 999);
-      
-      const result = {
-        startDate: startOfDayPST.toISOString().split('T')[0],
-        endDate: endOfDayPST.toISOString().split('T')[0]
-      };
-      console.log('📅 24h date range for BigQuery:', result);
-      return result;
-    case '7d':
-      const sevenDaysAgo = new Date(pstTime);
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      sevenDaysAgo.setHours(0, 0, 0, 0);
-      const endOfToday = new Date(pstTime);
-      endOfToday.setHours(23, 59, 59, 999);
-      
+      // For 24h, we want to capture the full Pacific day
+      const today = getTodayPST();
       return {
-        startDate: sevenDaysAgo.toISOString().split('T')[0],
-        endDate: endOfToday.toISOString().split('T')[0]
+        startDate: today,
+        endDate: today
+      };
+    case '7d':
+      const sevenDaysAgo = new Date(now);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+      return {
+        startDate: getDatePST(sevenDaysAgo),
+        endDate: getTodayPST()
       };
     case '30d':
-      const thirtyDaysAgo = new Date(pstTime);
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      thirtyDaysAgo.setHours(0, 0, 0, 0);
-      const endOfToday30d = new Date(pstTime);
-      endOfToday30d.setHours(23, 59, 59, 999);
-      
+      const thirtyDaysAgo = new Date(now);
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
       return {
-        startDate: thirtyDaysAgo.toISOString().split('T')[0],
-        endDate: endOfToday30d.toISOString().split('T')[0]
+        startDate: getDatePST(thirtyDaysAgo),
+        endDate: getTodayPST()
       };
     case '90d':
-      const ninetyDaysAgo = new Date(pstTime);
-      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-      ninetyDaysAgo.setHours(0, 0, 0, 0);
-      const endOfToday90d = new Date(pstTime);
-      endOfToday90d.setHours(23, 59, 59, 999);
-      
+      const ninetyDaysAgo = new Date(now);
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 89);
       return {
-        startDate: ninetyDaysAgo.toISOString().split('T')[0],
-        endDate: endOfToday90d.toISOString().split('T')[0]
+        startDate: getDatePST(ninetyDaysAgo),
+        endDate: getTodayPST()
       };
     case '1y':
-      const oneYearAgo = new Date(pstTime);
+      const oneYearAgo = new Date(now);
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-      oneYearAgo.setHours(0, 0, 0, 0);
-      const endOfToday1y = new Date(pstTime);
-      endOfToday1y.setHours(23, 59, 59, 999);
-      
       return {
-        startDate: oneYearAgo.toISOString().split('T')[0],
-        endDate: endOfToday1y.toISOString().split('T')[0]
+        startDate: getDatePST(oneYearAgo),
+        endDate: getTodayPST()
       };
     default:
       return getDateRangePST(timeRange);

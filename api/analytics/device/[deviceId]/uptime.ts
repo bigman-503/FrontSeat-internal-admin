@@ -184,8 +184,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           \`${process.env.GOOGLE_CLOUD_PROJECT_ID}.${targetDataset}.${targetTable}\`
         WHERE
           (device_id = @deviceId OR device_name = @deviceId)
-          AND location_timestamp >= TIMESTAMP(@startDate)
-          AND location_timestamp < TIMESTAMP_ADD(TIMESTAMP(@endDate), INTERVAL 1 DAY)
+          AND location_timestamp >= PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S %Z', CONCAT(@startDate, ' 00:00:00 America/Los_Angeles'))
+          AND location_timestamp < PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S %Z', CONCAT(FORMAT_DATE('%Y-%m-%d', DATE_ADD(PARSE_DATE('%Y-%m-%d', @endDate), INTERVAL 1 DAY)), ' 00:00:00 America/Los_Angeles'))
         ORDER BY
           location_timestamp ASC
       `;
@@ -222,6 +222,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             cpu_usage: rows[rows.length - 1].cpu_usage
           }
         });
+        
+        // Test timezone conversion for first record
+        const firstParsed = parseTimestamp(rows[0].location_timestamp);
+        console.log('🕐 First record timezone conversion test:', {
+          original: rows[0].location_timestamp,
+          parsed: firstParsed?.toISOString(),
+          parsedLocal: firstParsed?.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
+        });
+      } else {
+        console.log('❌ No heartbeat data found in BigQuery for the specified date range');
+        console.log('🔍 Query parameters:', { deviceId, startDate, endDate, timeRange });
       }
 
       // Process the data server-side
@@ -278,21 +289,40 @@ function parseTimestamp(timestamp: any): Date | null {
   const utcDate = new Date(timestampStr);
   if (isNaN(utcDate.getTime())) return null;
   
-  // Convert UTC to PST/PDT using proper timezone conversion
-  // This handles both PST (UTC-8) and PDT (UTC-7) automatically
-  const pstDate = new Date(utcDate.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
+  // Convert UTC to Pacific timezone (automatically handles PST/PDT)
+  const pacificTimeString = utcDate.toLocaleString("en-US", {
+    timeZone: "America/Los_Angeles",
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
   
-  // Format PST time correctly by manually constructing the time string
-  const pstFormatted = `${pstDate.getFullYear()}-${String(pstDate.getMonth() + 1).padStart(2, '0')}-${String(pstDate.getDate()).padStart(2, '0')}, ${String(pstDate.getHours()).padStart(2, '0')}:${String(pstDate.getMinutes()).padStart(2, '0')}:${String(pstDate.getSeconds()).padStart(2, '0')}`;
+  // Parse the Pacific time string back to a Date object
+  const [datePart, timePart] = pacificTimeString.split(', ');
+  const [month, day, year] = datePart.split('/');
+  const [hour, minute, second] = timePart.split(':');
+  
+  // Create a date string in Pacific timezone and parse it
+  const pacificDateString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute.padStart(2, '0')}:${second.padStart(2, '0')}`;
+  
+  // Create a date object that represents the Pacific time
+  // The key is to create a date in local timezone that matches the Pacific time
+  const pacificDate = new Date();
+  pacificDate.setFullYear(parseInt(year), parseInt(month) - 1, parseInt(day));
+  pacificDate.setHours(parseInt(hour), parseInt(minute), parseInt(second), 0);
   
   console.log('🕐 Timezone conversion:', {
     original: timestampStr,
     utc: utcDate.toISOString(),
-    pst: pstDate.toISOString(),
-    pstFormatted: pstFormatted
+    pacificTimeString,
+    pacificDate: pacificDate.toISOString()
   });
   
-  return pstDate;
+  return pacificDate;
 }
 
 function processUptimeData(
@@ -338,6 +368,13 @@ function processUptimeData(
   // Generate intervals
   const intervals = generateTimeIntervals(startTime, endTime, timeInterval);
   
+  console.log('⏰ Generated intervals:', {
+    totalIntervals: intervals.length,
+    firstInterval: intervals[0]?.toISOString(),
+    lastInterval: intervals[intervals.length - 1]?.toISOString(),
+    sampleIntervals: intervals.slice(0, 5).map(i => i.toISOString())
+  });
+  
   // Process uptime data
   return processUptimeIntervals(intervals, sortedData, timeInterval);
 }
@@ -346,13 +383,32 @@ function generateEmpty24HourData(timeInterval: number): UptimeDataPoint[] {
   const intervals = [];
   const today = new Date();
   
-  // Use proper timezone handling for PST/PDT
-  const todayPST = new Date(today.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
-  todayPST.setHours(0, 0, 0, 0);
+  // Use proper timezone handling for Pacific timezone
+  const pacificTimeString = today.toLocaleString("en-US", {
+    timeZone: "America/Los_Angeles",
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  
+  const [datePart, timePart] = pacificTimeString.split(', ');
+  const [month, day, year] = datePart.split('/');
+  const [hour, minute, second] = timePart.split(':');
+  
+  const todayPacific = new Date(
+    parseInt(year), 
+    parseInt(month) - 1, 
+    parseInt(day), 
+    0, 0, 0
+  );
   
   for (let hour = 0; hour < 24; hour++) {
     for (let minute = 0; minute < 60; minute += timeInterval) {
-      const time = new Date(todayPST);
+      const time = new Date(todayPacific);
       time.setHours(hour, minute, 0, 0);
       intervals.push(time);
     }
@@ -378,16 +434,38 @@ function getTimeRange(timeRange: string, sortedData: any[], timeInterval: number
   let startTime: Date, endTime: Date;
   
   if (timeRange === '24h') {
-    // For 24h view, create a 24-hour window from current PST time going back 24 hours
+    // For 24h view, create a 24-hour window from current Pacific time going back 24 hours
     const now = new Date();
-    const nowPST = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
+    const pacificTimeString = now.toLocaleString("en-US", {
+      timeZone: "America/Los_Angeles",
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
     
-    // End time is current PST time
-    endTime = new Date(nowPST);
+    const [datePart, timePart] = pacificTimeString.split(', ');
+    const [month, day, year] = datePart.split('/');
+    const [hour, minute, second] = timePart.split(':');
     
-    // Start time is 24 hours ago from current PST time
-    startTime = new Date(nowPST);
-    startTime.setHours(nowPST.getHours() - 24, nowPST.getMinutes(), nowPST.getSeconds(), 0);
+    const nowPacific = new Date(
+      parseInt(year), 
+      parseInt(month) - 1, 
+      parseInt(day), 
+      parseInt(hour), 
+      parseInt(minute), 
+      parseInt(second)
+    );
+    
+    // End time is current Pacific time
+    endTime = new Date(nowPacific);
+    
+    // Start time is 24 hours ago from current Pacific time
+    startTime = new Date(nowPacific);
+    startTime.setHours(nowPacific.getHours() - 24, nowPacific.getMinutes(), nowPacific.getSeconds(), 0);
     
     // Round to nearest 15-minute interval for cleaner display
     const roundedStart = new Date(startTime);
@@ -466,6 +544,39 @@ function processUptimeIntervals(
     firstHeartbeat: sortedData[0]?.parsedTime?.toISOString(),
     lastHeartbeat: sortedData[sortedData.length - 1]?.parsedTime?.toISOString()
   });
+  
+  // Log all parsed heartbeats for debugging
+  console.log('📊 All parsed heartbeats:', sortedData.map((hb, index) => ({
+    index,
+    original: hb.location_timestamp || hb.last_seen,
+    parsed: hb.parsedTime?.toISOString(),
+    parsedLocal: hb.parsedTime?.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }),
+    parsedHours: hb.parsedTime?.getHours(),
+    parsedMinutes: hb.parsedTime?.getMinutes()
+  })));
+  
+  // Test specific heartbeat matching
+  if (sortedData.length > 0) {
+    const testHeartbeat = sortedData[0];
+    const testInterval = intervals[0];
+    const testIntervalEnd = new Date(testInterval.getTime() + timeInterval * 60 * 1000);
+    
+    console.log('🧪 Testing heartbeat matching:', {
+      heartbeat: {
+        original: testHeartbeat.location_timestamp || testHeartbeat.last_seen,
+        parsed: testHeartbeat.parsedTime?.toISOString(),
+        hours: testHeartbeat.parsedTime?.getHours(),
+        minutes: testHeartbeat.parsedTime?.getMinutes()
+      },
+      interval: {
+        start: testInterval.toISOString(),
+        end: testIntervalEnd.toISOString(),
+        startHours: testInterval.getHours(),
+        startMinutes: testInterval.getMinutes()
+      },
+      isInInterval: testHeartbeat.parsedTime && testHeartbeat.parsedTime >= testInterval && testHeartbeat.parsedTime < testIntervalEnd
+    });
+  }
 
   for (let i = 0; i < intervals.length; i++) {
     const intervalStart = intervals[i];
