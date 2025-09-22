@@ -119,9 +119,56 @@ export function WeekUptimeChart({ data, onDayClick, selectedDate }: WeekUptimeCh
   const displayData = data.length > 0 ? data : generateEmptyWeekData();
 
   const averageUptime = displayData.length > 0 ? displayData.reduce((sum, day) => sum + day.uptime, 0) / displayData.length : 0;
+  
+  // Calculate total time online for the week
+  const totalOnlinePeriods = displayData.reduce((sum, day) => sum + day.onlinePeriods, 0);
+  const totalOfflinePeriods = displayData.reduce((sum, day) => sum + day.offlinePeriods, 0);
+  const totalPeriods = totalOnlinePeriods + totalOfflinePeriods;
+  const totalTimeOnlineMinutes = totalOnlinePeriods * 15; // 15-minute intervals
+  
+  // Format total time online
+  const formatTotalTimeOnline = (minutes: number): string => {
+    if (minutes < 60) {
+      return `${minutes}m`;
+    } else if (minutes < 1440) { // Less than 24 hours
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+    } else { // 24 hours or more
+      const days = Math.floor(minutes / 1440);
+      const remainingHours = Math.floor((minutes % 1440) / 60);
+      const remainingMinutes = minutes % 60;
+      let result = `${days}d`;
+      if (remainingHours > 0) result += ` ${remainingHours}h`;
+      if (remainingMinutes > 0) result += ` ${remainingMinutes}m`;
+      return result;
+    }
+  };
+  
+  const totalTimeOnlineFormatted = formatTotalTimeOnline(totalTimeOnlineMinutes);
 
   return (
     <div className="space-y-6">
+      {/* Week Summary Metrics */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-green-50 p-3 rounded-lg border">
+          <div className="text-2xl font-bold text-green-600">{totalOnlinePeriods}</div>
+          <div className="text-sm text-green-700">Online Periods</div>
+        </div>
+        <div className="bg-red-50 p-3 rounded-lg border">
+          <div className="text-2xl font-bold text-red-600">{totalOfflinePeriods}</div>
+          <div className="text-sm text-red-700">Offline Periods</div>
+        </div>
+        <div className="bg-blue-50 p-3 rounded-lg border">
+          <div className="text-2xl font-bold text-blue-600">{totalTimeOnlineFormatted}</div>
+          <div className="text-sm text-blue-700">Total Time Online</div>
+        </div>
+        <div className="bg-gray-50 p-3 rounded-lg border">
+          <div className="text-2xl font-bold text-gray-600">{averageUptime.toFixed(1)}%</div>
+          <div className="text-sm text-gray-700">Average Uptime</div>
+        </div>
+      </div>
+      
       {/* Week Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200 border-blue-300 shadow-lg hover:shadow-xl transition-all duration-300">

@@ -83,6 +83,30 @@ export function MonthUptimeChart({
   const totalOnlinePeriods = currentMonthData.reduce((sum, day) => sum + day.onlinePeriods, 0);
   const totalOfflinePeriods = currentMonthData.reduce((sum, day) => sum + day.offlinePeriods, 0);
   const totalHeartbeats = currentMonthData.reduce((sum, day) => sum + day.totalHeartbeats, 0);
+  
+  // Calculate total time online for the month
+  const totalTimeOnlineMinutes = totalOnlinePeriods * 15; // 15-minute intervals
+  
+  // Format total time online
+  const formatTotalTimeOnline = (minutes: number): string => {
+    if (minutes < 60) {
+      return `${minutes}m`;
+    } else if (minutes < 1440) { // Less than 24 hours
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+    } else { // 24 hours or more
+      const days = Math.floor(minutes / 1440);
+      const remainingHours = Math.floor((minutes % 1440) / 60);
+      const remainingMinutes = minutes % 60;
+      let result = `${days}d`;
+      if (remainingHours > 0) result += ` ${remainingHours}h`;
+      if (remainingMinutes > 0) result += ` ${remainingMinutes}m`;
+      return result;
+    }
+  };
+  
+  const totalTimeOnlineFormatted = formatTotalTimeOnline(totalTimeOnlineMinutes);
 
   // Group data by week
   const weeks = [];
@@ -112,12 +136,10 @@ export function MonthUptimeChart({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-green-600">Online Days</p>
-                <p className="text-2xl font-bold text-green-900">
-                  {currentMonthData.filter(day => day.isOnline).length}
-                </p>
+                <p className="text-sm font-medium text-green-600">Total Time Online</p>
+                <p className="text-2xl font-bold text-green-900">{totalTimeOnlineFormatted}</p>
               </div>
-              <Activity className="h-8 w-8 text-green-500" />
+              <Clock className="h-8 w-8 text-green-500" />
             </div>
           </CardContent>
         </Card>

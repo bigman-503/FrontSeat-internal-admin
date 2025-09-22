@@ -40,6 +40,30 @@ export function SimpleUptimeChart({
   const offlineCount = data.filter(d => d.isOnline === 0).length;
   const totalCount = data.length;
   const uptimePercentage = ((onlineCount / totalCount) * 100).toFixed(1);
+  
+  // Calculate total time online in minutes
+  const totalTimeOnlineMinutes = onlineCount * timeInterval;
+  
+  // Format total time online
+  const formatTotalTimeOnline = (minutes: number): string => {
+    if (minutes < 60) {
+      return `${minutes}m`;
+    } else if (minutes < 1440) { // Less than 24 hours
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+    } else { // 24 hours or more
+      const days = Math.floor(minutes / 1440);
+      const remainingHours = Math.floor((minutes % 1440) / 60);
+      const remainingMinutes = minutes % 60;
+      let result = `${days}d`;
+      if (remainingHours > 0) result += ` ${remainingHours}h`;
+      if (remainingMinutes > 0) result += ` ${remainingMinutes}m`;
+      return result;
+    }
+  };
+  
+  const totalTimeOnlineFormatted = formatTotalTimeOnline(totalTimeOnlineMinutes);
 
   return (
     <div className="space-y-4">
@@ -54,12 +78,12 @@ export function SimpleUptimeChart({
           <div className="text-sm text-red-700">Offline Periods</div>
         </div>
         <div className="bg-blue-50 p-3 rounded-lg border">
-          <div className="text-2xl font-bold text-blue-600">{uptimePercentage}%</div>
-          <div className="text-sm text-blue-700">Uptime</div>
+          <div className="text-2xl font-bold text-blue-600">{totalTimeOnlineFormatted}</div>
+          <div className="text-sm text-blue-700">Total Time Online</div>
         </div>
         <div className="bg-gray-50 p-3 rounded-lg border">
-          <div className="text-2xl font-bold text-gray-600">{totalCount}</div>
-          <div className="text-sm text-gray-700">Total Periods</div>
+          <div className="text-2xl font-bold text-gray-600">{uptimePercentage}%</div>
+          <div className="text-sm text-gray-700">Uptime</div>
         </div>
       </div>
 

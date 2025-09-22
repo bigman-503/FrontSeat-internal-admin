@@ -14,10 +14,8 @@ import { formatDatePST, getCurrentTimePST } from '@/lib/dateUtils';
 
 // Hooks
 import { useUptimeData } from '@/hooks/useUptimeData';
-import { useAdvancedChartControls } from '@/hooks/useAdvancedChartControls';
 
 // Components
-import { AnalyticsControls } from './AnalyticsControls';
 import { SimpleUptimeChart } from './SimpleUptimeChart';
 import { WeekUptimeChart } from './WeekUptimeChart';
 import { MonthUptimeChart } from './MonthUptimeChart';
@@ -34,21 +32,29 @@ interface DeviceAnalyticsDialogProps {
 }
 
 export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnalyticsDialogProps) {
-  // Advanced chart controls
-  const {
-    controls,
-    setTimeRange,
-    zoomIn,
-    zoomOut,
-    reset,
-    scrollLeft,
-    scrollRight,
-    setSelectedDate,
-    canZoomIn,
-    canZoomOut,
-    canScrollLeft,
-    canScrollRight
-  } = useAdvancedChartControls();
+  // Simple chart controls
+  const [timeRange, setTimeRange] = React.useState<string>('24h');
+  const [selectedDate, setSelectedDate] = React.useState<string | undefined>(undefined);
+
+  // Month navigation state
+  const [currentMonth, setCurrentMonth] = React.useState<Date>(new Date());
+
+  // Month navigation functions
+  const handlePreviousMonth = React.useCallback(() => {
+    setCurrentMonth(prev => {
+      const newMonth = new Date(prev);
+      newMonth.setMonth(newMonth.getMonth() - 1);
+      return newMonth;
+    });
+  }, []);
+
+  const handleNextMonth = React.useCallback(() => {
+    setCurrentMonth(prev => {
+      const newMonth = new Date(prev);
+      newMonth.setMonth(newMonth.getMonth() + 1);
+      return newMonth;
+    });
+  }, []);
 
   // Data fetching - now using dynamic time range
   const {
@@ -61,7 +67,7 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
     dataSource
   } = useUptimeData({
     device,
-    timeRange: controls.timeRange,
+    timeRange: timeRange,
     timeInterval: 15,
     useCustomRange: false,
     customStartDate: '',
@@ -70,11 +76,11 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
 
   // Process data for different views
   const dailySummaries = React.useMemo(() => {
-    if (controls.timeRange === '7d' || controls.timeRange === '30d') {
+    if (timeRange === '7d' || timeRange === '30d') {
       console.log('🔄 Aggregating daily summaries:', {
         uptimeDataLength: uptimeData.length,
         sampleUptimeData: uptimeData.slice(0, 2),
-        timeRange: controls.timeRange
+        timeRange: timeRange
       });
       const summaries = aggregateToDailySummaries(uptimeData);
       console.log('📊 Daily summaries result:', {
@@ -85,15 +91,15 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
       return summaries;
     }
     return [];
-  }, [uptimeData, controls.timeRange]);
+  }, [uptimeData, timeRange]);
 
   const monthData = React.useMemo(() => {
-    if (controls.timeRange === '30d') {
+    if (timeRange === '30d') {
       console.log('🔄 Aggregating month data:', {
         dailySummariesLength: dailySummaries.length,
         sampleDailySummary: dailySummaries[0]
       });
-      const monthView = aggregateToMonthView(dailySummaries, new Date());
+      const monthView = aggregateToMonthView(dailySummaries, currentMonth);
       console.log('📅 Month view result:', {
         monthDataLength: monthView.length,
         sampleMonthData: monthView[0],
@@ -102,7 +108,7 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
       return monthView;
     }
     return [];
-  }, [dailySummaries, controls.timeRange]);
+  }, [dailySummaries, timeRange, currentMonth]);
 
   // Helper function to filter uptime data for a specific day
   const getFilteredDayData = React.useCallback((data: any[], selectedDate: string) => {
@@ -173,16 +179,16 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
   // Debug logging
   console.log('🔍 DeviceAnalyticsDialog data:', {
     uptimeDataLength: uptimeData.length,
-    timeRange: controls.timeRange,
+    timeRange: timeRange,
     timeInterval: 15,
     sampleUptimeData: uptimeData.slice(0, 3),
     isMockData,
     dataSource,
-    viewMode: controls.viewMode,
-    selectedDate: controls.selectedDate,
+    viewMode: 'overview',
+    selectedDate: selectedDate,
     dailySummariesLength: dailySummaries.length,
     monthDataLength: monthData.length,
-    filteredDayDataLength: controls.selectedDate ? 'calculating...' : 0
+    filteredDayDataLength: selectedDate ? 'calculating...' : 0
   });
 
 
@@ -210,21 +216,6 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Controls */}
-          <AnalyticsControls
-            timeRange={controls.timeRange}
-            onTimeRangeChange={setTimeRange}
-            onZoomIn={zoomIn}
-            onZoomOut={zoomOut}
-            onReset={reset}
-            onScrollLeft={scrollLeft}
-            onScrollRight={scrollRight}
-            canZoomIn={canZoomIn}
-            canZoomOut={canZoomOut}
-            canScrollLeft={canScrollLeft}
-            canScrollRight={canScrollRight}
-            loading={loading}
-          />
 
           {/* Loading State */}
           {loading && <LoadingState />}
@@ -252,7 +243,7 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
 
                 <TabsContent value="uptime" className="space-y-4">
                   {/* Dynamic View Based on Time Range */}
-                  {controls.timeRange === '24h' && (
+                  {timeRange === '24h' && (
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
@@ -282,28 +273,30 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
                     </Card>
                   )}
 
-                  {controls.timeRange === '7d' && (
+                  {timeRange === '7d' && (
                     <WeekUptimeChart
                       data={dailySummaries}
                       onDayClick={setSelectedDate}
-                      selectedDate={controls.selectedDate}
+                      selectedDate={selectedDate}
                     />
                   )}
 
-                  {controls.timeRange === '30d' && (
+                  {timeRange === '30d' && (
                     <MonthUptimeChart
                       data={monthData}
-                      currentMonth={getCurrentMonthName()}
+                      currentMonth={currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                       onDayClick={setSelectedDate}
-                      selectedDate={controls.selectedDate}
+                      onPreviousMonth={handlePreviousMonth}
+                      onNextMonth={handleNextMonth}
+                      selectedDate={selectedDate}
                     />
                   )}
                 </TabsContent>
 
                 {/* Selected Day Detail View - Outside of time range conditions */}
-                {controls.selectedDate && (
+                {selectedDate && (
                   <>
-                    {console.log('🎯 Rendering Day Detail for:', controls.selectedDate)}
+                    {console.log('🎯 Rendering Day Detail for:', selectedDate)}
                     <Card className="mt-6 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
                     <CardHeader>
                       <div className="flex items-center justify-between">
@@ -311,8 +304,8 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
                           <Activity className="h-5 w-5 text-blue-600" />
                           <CardTitle className="text-blue-900">
                             {(() => {
-                              if (!controls.selectedDate) return 'Day Detail';
-                              const date = new Date(controls.selectedDate + 'T00:00:00-07:00');
+                              if (!selectedDate) return 'Day Detail';
+                              const date = new Date(selectedDate + 'T00:00:00-07:00');
                               return date.toLocaleDateString('en-US', {
                                 weekday: 'long',
                                 month: 'long',
@@ -332,8 +325,8 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
                       </div>
                       <CardDescription className="text-blue-700">
                         Detailed 24-hour view for {(() => {
-                          if (!controls.selectedDate) return '';
-                          const date = new Date(controls.selectedDate + 'T00:00:00-07:00');
+                          if (!selectedDate) return '';
+                          const date = new Date(selectedDate + 'T00:00:00-07:00');
                           return date.toLocaleDateString('en-US', {
                             weekday: 'long',
                             month: 'long',
@@ -345,12 +338,12 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
                     </CardHeader>
                     <CardContent>
                       <SimpleUptimeChart
-                        data={getFilteredDayData(uptimeData, controls.selectedDate)}
+                        data={getFilteredDayData(uptimeData, selectedDate)}
                         timeRange="24h"
                         timeInterval={15}
-                        dateRange={getDayDateRange(controls.selectedDate)}
+                        dateRange={getDayDateRange(selectedDate)}
                         isHistoricalView={true}
-                        selectedDate={controls.selectedDate}
+                        selectedDate={selectedDate}
                       />
                     </CardContent>
                   </Card>
