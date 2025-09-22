@@ -6,13 +6,17 @@ interface SimpleUptimeChartProps {
   timeRange: string;
   timeInterval: number;
   dateRange: { startDate: string; endDate: string };
+  isHistoricalView?: boolean; // New prop to indicate if this is historical data
+  selectedDate?: string; // The specific date being viewed for historical data
 }
 
 export function SimpleUptimeChart({ 
   data, 
   timeRange, 
   timeInterval, 
-  dateRange 
+  dateRange,
+  isHistoricalView = false,
+  selectedDate
 }: SimpleUptimeChartProps) {
   console.log('🎯 SimpleUptimeChart render:', {
     dataLength: data.length,
@@ -63,56 +67,104 @@ export function SimpleUptimeChart({
       <div className="bg-white border rounded-lg p-4">
         <h3 className="text-lg font-semibold mb-4">Device Status Timeline</h3>
         <div className="space-y-2">
-          {/* Time labels - Dynamic rolling 24-hour window with 3-hour intervals */}
+          {/* Time labels - Dynamic based on view type */}
           <div className="relative">
             {/* Time markers with connecting lines */}
             <div className="flex justify-between text-xs text-gray-500 mb-2 relative">
               {(() => {
-                // Get current time in PST
-                const now = new Date();
-                const nowPST = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
-                
-                // Generate 8 time markers: 24h ago, 21h ago, 18h ago, 15h ago, 12h ago, 9h ago, 6h ago, 3h ago, now
-                const timeMarkers = [];
-                for (let i = 0; i < 9; i++) {
-                  const time = new Date(nowPST);
-                  time.setHours(nowPST.getHours() - (24 - (i * 3)), 0, 0, 0);
+                if (isHistoricalView && selectedDate) {
+                  // For historical data, always show full day from 00:00 to 24:00
+                  const timeMarkers = [];
                   
-                  // Format time with AM/PM
-                  const timeStr = time.toLocaleTimeString('en-US', { 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    hour12: true 
-                  });
+                  // Always show full day markers for historical data
+                  for (let i = 0; i < 9; i++) {
+                    const hour = i * 3; // 0, 3, 6, 9, 12, 15, 18, 21, 24
+                    const time = new Date(selectedDate);
+                    time.setHours(hour, 0, 0, 0);
+                    
+                    // Format time with AM/PM
+                    const timeStr = time.toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit',
+                      hour12: true 
+                    });
+                    
+                    // Add date for 00:00 (midnight) markers
+                    const isMidnight = hour === 0;
+                    const dateStr = time.toLocaleDateString('en-US', { 
+                      month: 'long', 
+                      day: 'numeric',
+                      year: 'numeric'
+                    });
+                    
+                    timeMarkers.push({
+                      time: timeStr,
+                      date: isMidnight ? dateStr : null,
+                      isMidnight: isMidnight
+                    });
+                  }
                   
-                  // Add date for 00:00 (midnight) markers
-                  const isMidnight = time.getHours() === 0;
-                  const dateStr = time.toLocaleDateString('en-US', { 
-                    month: 'long', 
-                    day: 'numeric' 
-                  });
-                  
-                  timeMarkers.push({
-                    time: timeStr,
-                    date: isMidnight ? dateStr : null,
-                    isMidnight: isMidnight
-                  });
-                }
-                
-                return timeMarkers.map((marker, index) => (
-                  <div key={index} className="text-center relative">
-                    {marker.isMidnight && (
-                      <div className="text-xs font-medium text-gray-700 mb-1">
-                        {marker.date}
+                  return timeMarkers.map((marker, index) => (
+                    <div key={index} className="text-center relative">
+                      {marker.isMidnight && (
+                        <div className="text-xs font-medium text-gray-700 mb-1">
+                          {marker.date}
+                        </div>
+                      )}
+                      <div className="text-xs text-gray-500">
+                        {marker.time}
                       </div>
-                    )}
-                    <div className="text-xs text-gray-500">
-                      {marker.time}
+                      {/* Vertical line connecting to timeline */}
+                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-px h-2 bg-gray-300"></div>
                     </div>
-                    {/* Vertical line connecting to timeline */}
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-px h-2 bg-gray-300"></div>
-                  </div>
-                ));
+                  ));
+                } else {
+                  // For current data, show rolling 24-hour window
+                  const now = new Date();
+                  const nowPST = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
+                  
+                  // Generate 8 time markers: 24h ago, 21h ago, 18h ago, 15h ago, 12h ago, 9h ago, 6h ago, 3h ago, now
+                  const timeMarkers = [];
+                  for (let i = 0; i < 9; i++) {
+                    const time = new Date(nowPST);
+                    time.setHours(nowPST.getHours() - (24 - (i * 3)), 0, 0, 0);
+                    
+                    // Format time with AM/PM
+                    const timeStr = time.toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit',
+                      hour12: true 
+                    });
+                    
+                    // Add date for 00:00 (midnight) markers
+                    const isMidnight = time.getHours() === 0;
+                    const dateStr = time.toLocaleDateString('en-US', { 
+                      month: 'long', 
+                      day: 'numeric' 
+                    });
+                    
+                    timeMarkers.push({
+                      time: timeStr,
+                      date: isMidnight ? dateStr : null,
+                      isMidnight: isMidnight
+                    });
+                  }
+                  
+                  return timeMarkers.map((marker, index) => (
+                    <div key={index} className="text-center relative">
+                      {marker.isMidnight && (
+                        <div className="text-xs font-medium text-gray-700 mb-1">
+                          {marker.date}
+                        </div>
+                      )}
+                      <div className="text-xs text-gray-500">
+                        {marker.time}
+                      </div>
+                      {/* Vertical line connecting to timeline */}
+                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-px h-2 bg-gray-300"></div>
+                    </div>
+                  ));
+                }
               })()}
             </div>
           </div>
@@ -122,13 +174,20 @@ export function SimpleUptimeChart({
             {/* Grid lines for better alignment */}
             <div className="absolute inset-0 flex justify-between pointer-events-none">
               {(() => {
+                // Calculate the number of time markers dynamically
+                let markerCount = 9; // Default for current data
+                if (isHistoricalView && selectedDate) {
+                  // For historical data, always show 9 markers (00:00 to 24:00)
+                  markerCount = 9;
+                }
+                
                 const gridLines = [];
-                for (let i = 0; i < 9; i++) {
+                for (let i = 0; i < markerCount; i++) {
                   gridLines.push(
                     <div 
                       key={i} 
                       className="w-px h-full bg-gray-100"
-                      style={{ marginLeft: i === 0 ? '0' : `${(100/8) * i}%` }}
+                      style={{ marginLeft: i === 0 ? '0' : `${(100/(markerCount-1)) * i}%` }}
                     ></div>
                   );
                 }
@@ -149,7 +208,14 @@ export function SimpleUptimeChart({
               const time12Hour = `${hour12}:${minutes} ${ampm}`;
               
               // Get the date for this interval
-              const intervalDate = new Date(point.timestamp || new Date());
+              let intervalDate;
+              if (isHistoricalView && selectedDate) {
+                // For historical data, use the selected date
+                intervalDate = new Date(selectedDate);
+              } else {
+                // For current data, use the point timestamp
+                intervalDate = new Date(point.timestamp || new Date());
+              }
               const dateStr = intervalDate.toLocaleDateString('en-US', { 
                 month: 'long', 
                 day: 'numeric',
@@ -201,7 +267,14 @@ export function SimpleUptimeChart({
               const time12Hour = `${hour12}:${minutes} ${ampm}`;
               
               // Get the date for this interval
-              const intervalDate = new Date(point.timestamp || new Date());
+              let intervalDate;
+              if (isHistoricalView && selectedDate) {
+                // For historical data, use the selected date
+                intervalDate = new Date(selectedDate);
+              } else {
+                // For current data, use the point timestamp
+                intervalDate = new Date(point.timestamp || new Date());
+              }
               const dateStr = intervalDate.toLocaleDateString('en-US', { 
                 month: 'short', 
                 day: 'numeric'

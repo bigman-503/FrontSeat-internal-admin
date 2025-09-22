@@ -226,7 +226,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Process the data server-side
       const heartbeatData: HeartbeatData[] = rows;
-      const uptimeData = processUptimeData(heartbeatData, timeRange, timeInterval);
+      const uptimeData = processUptimeData(heartbeatData, timeRange, timeInterval, startDate, endDate);
       const stats = calculateUptimeStats(uptimeData, timeInterval);
       const patterns = analyzeDevicePatterns(uptimeData, timeInterval);
       const dateRange = getDateRange(uptimeData, timeRange);
@@ -298,12 +298,16 @@ function parseTimestamp(timestamp: any): Date | null {
 function processUptimeData(
   heartbeatData: HeartbeatData[],
   timeRange: string,
-  timeInterval: number
+  timeInterval: number,
+  startDate?: string,
+  endDate?: string
 ): UptimeDataPoint[] {
   console.log('🔄 Processing uptime data:', { 
     timeRange, 
     heartbeatDataLength: heartbeatData.length,
-    timeInterval
+    timeInterval,
+    startDate,
+    endDate
   });
   
   // For 24h view, always generate full 24-hour range even with no data
@@ -329,7 +333,7 @@ function processUptimeData(
   }
 
   // Determine time range
-  const { startTime, endTime } = getTimeRange(timeRange, sortedData, timeInterval);
+  const { startTime, endTime } = getTimeRange(timeRange, sortedData, timeInterval, startDate, endDate);
   
   // Generate intervals
   const intervals = generateTimeIntervals(startTime, endTime, timeInterval);
@@ -370,7 +374,7 @@ function generateEmpty24HourData(timeInterval: number): UptimeDataPoint[] {
   }));
 }
 
-function getTimeRange(timeRange: string, sortedData: any[], timeInterval: number) {
+function getTimeRange(timeRange: string, sortedData: any[], timeInterval: number, startDate?: string, endDate?: string) {
   let startTime: Date, endTime: Date;
   
   if (timeRange === '24h') {
@@ -394,7 +398,22 @@ function getTimeRange(timeRange: string, sortedData: any[], timeInterval: number
     
     startTime = roundedStart;
     endTime = roundedEnd;
+  } else if (startDate && endDate) {
+    // For 7d and 30d views, use the requested date range to ensure we include the full period
+    startTime = new Date(startDate + 'T00:00:00');
+    endTime = new Date(endDate + 'T23:59:59');
+    
+    // Round to nearest 15-minute interval for cleaner display
+    const roundedStart = new Date(startTime);
+    roundedStart.setMinutes(Math.floor(roundedStart.getMinutes() / timeInterval) * timeInterval, 0, 0);
+    
+    const roundedEnd = new Date(endTime);
+    roundedEnd.setMinutes(Math.ceil(roundedEnd.getMinutes() / timeInterval) * timeInterval, 0, 0);
+    
+    startTime = roundedStart;
+    endTime = roundedEnd;
   } else {
+    // Fallback to data range if no dates provided
     startTime = sortedData[0].parsedTime!;
     endTime = sortedData[sortedData.length - 1].parsedTime!;
     
@@ -413,7 +432,9 @@ function getTimeRange(timeRange: string, sortedData: any[], timeInterval: number
     startTime: startTime.toISOString(),
     endTime: endTime.toISOString(),
     startTimePST: startTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }),
-    endTimePST: endTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
+    endTimePST: endTime.toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }),
+    requestedStartDate: startDate,
+    requestedEndDate: endDate
   });
   
   return { startTime, endTime };

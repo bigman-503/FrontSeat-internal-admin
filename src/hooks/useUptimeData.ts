@@ -189,10 +189,10 @@ function getDefaultStartDate(timeRange: string): string {
       yesterdayPST.setDate(yesterdayPST.getDate() - 1);
       return yesterdayPST.toISOString().split('T')[0];
     case '7d':
-      nowPST.setDate(nowPST.getDate() - 7);
+      nowPST.setDate(nowPST.getDate() - 6); // Go back 6 days to include today (7 days total)
       break;
     case '30d':
-      nowPST.setDate(nowPST.getDate() - 30);
+      nowPST.setDate(nowPST.getDate() - 29); // Go back 29 days to include today (30 days total)
       break;
     default:
       nowPST.setDate(nowPST.getDate() - 1);
