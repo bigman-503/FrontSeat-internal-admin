@@ -190,7 +190,7 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+      <DialogContent className="max-w-7xl max-h-[95vh] overflow-y-auto w-[95vw] sm:w-full p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <Smartphone className="h-6 w-6" />
@@ -310,7 +310,16 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
                         <div className="flex items-center gap-2">
                           <Activity className="h-5 w-5 text-blue-600" />
                           <CardTitle className="text-blue-900">
-                            Day Detail - {controls.selectedDate}
+                            {(() => {
+                              if (!controls.selectedDate) return 'Day Detail';
+                              const date = new Date(controls.selectedDate + 'T00:00:00-07:00');
+                              return date.toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                month: 'long',
+                                day: 'numeric',
+                                timeZone: 'America/Los_Angeles'
+                              });
+                            })()}
                           </CardTitle>
                         </div>
                         <button
@@ -322,7 +331,16 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
                         </button>
                       </div>
                       <CardDescription className="text-blue-700">
-                        Detailed 24-hour view for {controls.selectedDate}
+                        Detailed 24-hour view for {(() => {
+                          if (!controls.selectedDate) return '';
+                          const date = new Date(controls.selectedDate + 'T00:00:00-07:00');
+                          return date.toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            month: 'long',
+                            day: 'numeric',
+                            timeZone: 'America/Los_Angeles'
+                          });
+                        })()}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>

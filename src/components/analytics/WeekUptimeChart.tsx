@@ -216,11 +216,11 @@ export function WeekUptimeChart({ data, onDayClick, selectedDate }: WeekUptimeCh
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6 pt-4">
           <div className="space-y-4">
             {/* Day Cards */}
-            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 min-w-max lg:min-w-0 pb-2">
+            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 px-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 min-w-max lg:min-w-0 pb-4 pt-2">
               {displayData.map((day, index) => (
                         <div
                           key={day.date}
@@ -236,7 +236,7 @@ export function WeekUptimeChart({ data, onDayClick, selectedDate }: WeekUptimeCh
                       : 'border-gray-200 hover:border-gray-400'
                     }
                     animate-in fade-in-0 slide-in-from-bottom-2 duration-500
-                    min-h-[180px] w-full
+                    min-h-[200px] w-full flex flex-col justify-between
                   `}
                   style={{ animationDelay: `${index * 100}ms` }}
                 >

@@ -64,139 +64,177 @@ export function SimpleUptimeChart({
       </div>
 
       {/* Timeline Visualization */}
-      <div className="bg-white border rounded-lg p-4">
-        <h3 className="text-lg font-semibold mb-4">Device Status Timeline</h3>
-        <div className="space-y-2">
-          {/* Time labels - Dynamic based on view type */}
-          <div className="relative">
-            {/* Time markers with connecting lines */}
-            <div className="flex justify-between text-xs text-gray-500 mb-2 relative">
-              {(() => {
-                if (isHistoricalView && selectedDate) {
-                  // For historical data, always show full day from 00:00 to 24:00
-                  const timeMarkers = [];
+      <div className="bg-white border rounded-lg p-6 shadow-sm">
+        <h3 className="text-lg font-semibold mb-6 text-gray-800">Device Status Timeline</h3>
+        <div className="space-y-4">
+          {/* Time labels positioned ABOVE the timeline */}
+          <div className="relative h-12">
+            {(() => {
+              if (isHistoricalView && selectedDate) {
+                // For historical data, calculate marker positions based on actual data
+                const timeMarkers = [];
+                
+                // Calculate positions for 3-hour intervals based on actual data length
+                const dataLength = data.length;
+                const intervalHours = [0, 3, 6, 9, 12, 15, 18, 21, 24]; // Hours to mark
+                
+                for (let i = 0; i < intervalHours.length; i++) {
+                  const hour = intervalHours[i];
+                  const time = new Date(selectedDate + 'T00:00:00-07:00');
+                  time.setHours(hour, 0, 0, 0);
                   
-                  // Always show full day markers for historical data
-                  for (let i = 0; i < 9; i++) {
-                    const hour = i * 3; // 0, 3, 6, 9, 12, 15, 18, 21, 24
-                    const time = new Date(selectedDate);
-                    time.setHours(hour, 0, 0, 0);
-                    
-                    // Format time with AM/PM
-                    const timeStr = time.toLocaleTimeString('en-US', { 
-                      hour: '2-digit', 
-                      minute: '2-digit',
-                      hour12: true 
-                    });
-                    
-                    // Add date for 00:00 (midnight) markers
-                    const isMidnight = hour === 0;
-                    const dateStr = time.toLocaleDateString('en-US', { 
-                      month: 'long', 
-                      day: 'numeric',
-                      year: 'numeric'
-                    });
-                    
-                    timeMarkers.push({
-                      time: timeStr,
-                      date: isMidnight ? dateStr : null,
-                      isMidnight: isMidnight
-                    });
-                  }
+                  // Format time with AM/PM
+                  const timeStr = time.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: true,
+                    timeZone: 'America/Los_Angeles'
+                  });
                   
-                  return timeMarkers.map((marker, index) => (
-                    <div key={index} className="text-center relative">
-                      {marker.isMidnight && (
-                        <div className="text-xs font-medium text-gray-700 mb-1">
-                          {marker.date}
-                        </div>
-                      )}
-                      <div className="text-xs text-gray-500">
-                        {marker.time}
-                      </div>
-                      {/* Vertical line connecting to timeline */}
-                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-px h-2 bg-gray-300"></div>
-                    </div>
-                  ));
-                } else {
-                  // For current data, show rolling 24-hour window
-                  const now = new Date();
-                  const nowPST = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
+                  // Add date for 00:00 (midnight) markers
+                  const isMidnight = hour === 0;
+                  const dateStr = time.toLocaleDateString('en-US', { 
+                    month: 'long', 
+                    day: 'numeric',
+                    year: 'numeric',
+                    timeZone: 'America/Los_Angeles'
+                  });
                   
-                  // Generate 8 time markers: 24h ago, 21h ago, 18h ago, 15h ago, 12h ago, 9h ago, 6h ago, 3h ago, now
-                  const timeMarkers = [];
-                  for (let i = 0; i < 9; i++) {
-                    const time = new Date(nowPST);
-                    time.setHours(nowPST.getHours() - (24 - (i * 3)), 0, 0, 0);
-                    
-                    // Format time with AM/PM
-                    const timeStr = time.toLocaleTimeString('en-US', { 
-                      hour: '2-digit', 
-                      minute: '2-digit',
-                      hour12: true 
-                    });
-                    
-                    // Add date for 00:00 (midnight) markers
-                    const isMidnight = time.getHours() === 0;
-                    const dateStr = time.toLocaleDateString('en-US', { 
-                      month: 'long', 
-                      day: 'numeric' 
-                    });
-                    
-                    timeMarkers.push({
-                      time: timeStr,
-                      date: isMidnight ? dateStr : null,
-                      isMidnight: isMidnight
-                    });
-                  }
+                  // Calculate position based on data length (96 intervals for 24 hours = 4 per hour)
+                  // Each hour has 4 intervals (15 minutes each), so 3-hour intervals have 12 intervals
+                  const intervalsPerHour = dataLength / 24; // Should be 4 for 15-minute intervals
+                  const intervalsPer3Hours = intervalsPerHour * 3; // 12 intervals per 3-hour mark
+                  const position = (i * intervalsPer3Hours) / (dataLength - 1);
                   
-                  return timeMarkers.map((marker, index) => (
-                    <div key={index} className="text-center relative">
-                      {marker.isMidnight && (
-                        <div className="text-xs font-medium text-gray-700 mb-1">
-                          {marker.date}
-                        </div>
-                      )}
-                      <div className="text-xs text-gray-500">
-                        {marker.time}
-                      </div>
-                      {/* Vertical line connecting to timeline */}
-                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-px h-2 bg-gray-300"></div>
-                    </div>
-                  ));
+                  timeMarkers.push({
+                    time: timeStr,
+                    date: isMidnight ? dateStr : null,
+                    isMidnight: isMidnight,
+                    position: Math.min(position, 1) // Cap at 1.0
+                  });
                 }
-              })()}
-            </div>
+                
+                return timeMarkers.map((marker, index) => (
+                  <div 
+                    key={index} 
+                    className="absolute text-center transform -translate-x-1/2"
+                    style={{ left: `${marker.position * 100}%` }}
+                  >
+                    {marker.isMidnight && (
+                      <div className="text-xs font-medium text-gray-700 mb-1">
+                        {marker.date}
+                      </div>
+                    )}
+                    <div className="text-xs text-gray-600 font-medium">
+                      {marker.time}
+                    </div>
+                    {/* Vertical line connecting to timeline */}
+                    <div className={`absolute top-full left-1/2 transform -translate-x-1/2 w-px h-4 ${
+                      marker.position === 0 || marker.position === 1 ? 'bg-gray-400' : 'bg-gray-300'
+                    }`}></div>
+                  </div>
+                ));
+              } else {
+                // For current data, show rolling 24-hour window
+                const now = new Date();
+                const nowPST = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
+                
+                // Generate 9 time markers: 24h ago, 21h ago, 18h ago, 15h ago, 12h ago, 9h ago, 6h ago, 3h ago, now
+                const timeMarkers = [];
+                for (let i = 0; i < 9; i++) {
+                  const time = new Date(nowPST);
+                  time.setHours(nowPST.getHours() - (24 - (i * 3)), 0, 0, 0);
+                  
+                  // Format time with AM/PM
+                  const timeStr = time.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: true 
+                  });
+                  
+                  // Add date for 00:00 (midnight) markers
+                  const isMidnight = time.getHours() === 0;
+                  const dateStr = time.toLocaleDateString('en-US', { 
+                    month: 'long', 
+                    day: 'numeric' 
+                  });
+                  
+                  timeMarkers.push({
+                    time: timeStr,
+                    date: isMidnight ? dateStr : null,
+                    isMidnight: isMidnight,
+                    position: i / 8 // Evenly distribute across 8 intervals
+                  });
+                }
+                
+                return timeMarkers.map((marker, index) => (
+                  <div 
+                    key={index} 
+                    className="absolute text-center transform -translate-x-1/2"
+                    style={{ left: `${marker.position * 100}%` }}
+                  >
+                    {marker.isMidnight && (
+                      <div className="text-xs font-medium text-gray-700 mb-1">
+                        {marker.date}
+                      </div>
+                    )}
+                    <div className="text-xs text-gray-600 font-medium">
+                      {marker.time}
+                    </div>
+                    {/* Vertical line connecting to timeline */}
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-px h-4 bg-gray-300"></div>
+                  </div>
+                ));
+              }
+            })()}
           </div>
           
           {/* Status bars with grid lines */}
-          <div className="relative">
+          <div className="relative mt-2">
             {/* Grid lines for better alignment */}
-            <div className="absolute inset-0 flex justify-between pointer-events-none">
+            <div className="absolute inset-0 pointer-events-none">
               {(() => {
-                // Calculate the number of time markers dynamically
-                let markerCount = 9; // Default for current data
                 if (isHistoricalView && selectedDate) {
-                  // For historical data, always show 9 markers (00:00 to 24:00)
-                  markerCount = 9;
+                  // For historical data, position grid lines at 3-hour intervals based on actual data
+                  const dataLength = data.length;
+                  const intervalHours = [0, 3, 6, 9, 12, 15, 18, 21, 24]; // Hours to mark
+                  
+                  return intervalHours.map((hour, index) => {
+                    // Calculate position based on data length (96 intervals for 24 hours = 4 per hour)
+                    const intervalsPerHour = dataLength / 24; // Should be 4 for 15-minute intervals
+                    const intervalsPer3Hours = intervalsPerHour * 3; // 12 intervals per 3-hour mark
+                    const position = (index * intervalsPer3Hours) / (dataLength - 1);
+                    
+                    return (
+                      <div 
+                        key={index} 
+                        className={`absolute w-px h-full ${
+                          hour === 0 || hour === 24 ? 'bg-gray-300' : 'bg-gray-200'
+                        }`}
+                        style={{ left: `${Math.min(position, 1) * 100}%` }}
+                      ></div>
+                    );
+                  });
+                } else {
+                  // For current data, use equal spacing
+                  const markerCount = 9;
+                  const gridLines = [];
+                  for (let i = 0; i < markerCount; i++) {
+                    gridLines.push(
+                      <div 
+                        key={i} 
+                        className="absolute w-px h-full bg-gray-100"
+                        style={{ left: `${(100/(markerCount-1)) * i}%` }}
+                      ></div>
+                    );
+                  }
+                  return gridLines;
                 }
-                
-                const gridLines = [];
-                for (let i = 0; i < markerCount; i++) {
-                  gridLines.push(
-                    <div 
-                      key={i} 
-                      className="w-px h-full bg-gray-100"
-                      style={{ marginLeft: i === 0 ? '0' : `${(100/(markerCount-1)) * i}%` }}
-                    ></div>
-                  );
-                }
-                return gridLines;
               })()}
             </div>
             
             {/* Status bars */}
-            <div className="flex gap-1 h-8 relative z-10">
+            <div className="flex gap-0.5 h-10 relative z-10">
               {data.map((point, index) => {
               // Convert displayTime to AM/PM format and add date
               const timeStr = point.displayTime;
@@ -210,8 +248,8 @@ export function SimpleUptimeChart({
               // Get the date for this interval
               let intervalDate;
               if (isHistoricalView && selectedDate) {
-                // For historical data, use the selected date
-                intervalDate = new Date(selectedDate);
+                // For historical data, use the selected date with Pacific timezone
+                intervalDate = new Date(selectedDate + 'T00:00:00-07:00');
               } else {
                 // For current data, use the point timestamp
                 intervalDate = new Date(point.timestamp || new Date());
@@ -219,16 +257,17 @@ export function SimpleUptimeChart({
               const dateStr = intervalDate.toLocaleDateString('en-US', { 
                 month: 'long', 
                 day: 'numeric',
-                year: 'numeric'
+                year: 'numeric',
+                timeZone: 'America/Los_Angeles'
               });
               
               return (
                 <div
                   key={index}
-                  className={`flex-1 rounded-sm ${
+                  className={`flex-1 rounded-sm transition-all duration-200 hover:scale-y-110 hover:shadow-md cursor-pointer ${
                     point.isOnline === 1 
-                      ? 'bg-green-500' 
-                      : 'bg-red-500'
+                      ? 'bg-gradient-to-b from-green-400 to-green-600 hover:from-green-300 hover:to-green-500' 
+                      : 'bg-gradient-to-b from-red-400 to-red-600 hover:from-red-300 hover:to-red-500'
                   }`}
                   title={`${dateStr} at ${time12Hour}: ${point.isOnline === 1 ? 'Online' : 'Offline'} (${point.heartbeatCount || 0} heartbeats)`}
                 />
@@ -238,14 +277,14 @@ export function SimpleUptimeChart({
           </div>
           
           {/* Legend */}
-          <div className="flex items-center justify-center gap-6 mt-4 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-500 rounded"></div>
-              <span>Online</span>
+          <div className="flex items-center justify-center gap-8 mt-6 text-sm">
+            <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg border border-green-200">
+              <div className="w-4 h-4 bg-gradient-to-b from-green-400 to-green-600 rounded"></div>
+              <span className="font-medium text-green-700">Online</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-red-500 rounded"></div>
-              <span>Offline</span>
+            <div className="flex items-center gap-2 px-3 py-2 bg-red-50 rounded-lg border border-red-200">
+              <div className="w-4 h-4 bg-gradient-to-b from-red-400 to-red-600 rounded"></div>
+              <span className="font-medium text-red-700">Offline</span>
             </div>
           </div>
         </div>
