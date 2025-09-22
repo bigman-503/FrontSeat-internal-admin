@@ -200,19 +200,20 @@ function getDefaultStartDate(timeRange: string): string {
   
   switch (timeRange) {
     case '24h':
-      // For 24h view, start from today to include both today and tomorrow (24-hour window)
-      const today24h = new Date(now);
-      const today24hPSTString = today24h.toLocaleString("en-US", {
+      // For 24h view, start from 24 hours ago to include the rolling 24-hour window
+      const yesterday24h = new Date(now);
+      yesterday24h.setDate(yesterday24h.getDate() - 1);
+      const yesterday24hPSTString = yesterday24h.toLocaleString("en-US", {
         timeZone: "America/Los_Angeles",
         year: 'numeric',
         month: '2-digit',
         day: '2-digit'
       });
-      const [tMonth, tDay, tYear] = today24hPSTString.split('/');
-      const result = `${tYear}-${tMonth}-${tDay}`;
-      console.log('🕐 24h start date calculation:', {
-        today24hPSTString,
-        tMonth, tDay, tYear,
+      const [yMonth, yDay, yYear] = yesterday24hPSTString.split('/');
+      const result = `${yYear}-${yMonth}-${yDay}`;
+      console.log('🕐 24h start date calculation (24h ago):', {
+        yesterday24hPSTString,
+        yMonth, yDay, yYear,
         result
       });
       return result;
@@ -265,20 +266,19 @@ function getDefaultEndDate(timeRange: string): string {
   });
   
   if (timeRange === '24h') {
-    // For 24h view, include tomorrow's data to capture the full 24-hour window
-    const tomorrow24h = new Date(now);
-    tomorrow24h.setDate(tomorrow24h.getDate() + 1);
-    const tomorrow24hPSTString = tomorrow24h.toLocaleString("en-US", {
+    // For 24h view, end at today to capture the rolling 24-hour window
+    const today24h = new Date(now);
+    const today24hPSTString = today24h.toLocaleString("en-US", {
       timeZone: "America/Los_Angeles",
       year: 'numeric',
       month: '2-digit',
       day: '2-digit'
     });
-    const [tmMonth, tmDay, tmYear] = tomorrow24hPSTString.split('/');
-    const result = `${tmYear}-${tmMonth}-${tmDay}`;
-    console.log('🕐 24h end date calculation:', {
-      tomorrow24hPSTString,
-      tmMonth, tmDay, tmYear,
+    const [tMonth, tDay, tYear] = today24hPSTString.split('/');
+    const result = `${tYear}-${tMonth}-${tDay}`;
+    console.log('🕐 24h end date calculation (today):', {
+      today24hPSTString,
+      tMonth, tDay, tYear,
       result
     });
     return result;
