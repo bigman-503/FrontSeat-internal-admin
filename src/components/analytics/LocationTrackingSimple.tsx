@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { MapPin, Route, Navigation } from 'lucide-react';
 import { Loader } from '@googlemaps/js-api-loader';
 import { formatDateTimePST } from '@/lib/dateUtils';
+import { WeekLocationChart } from './WeekLocationChart';
 
 interface LocationData {
   latitude: number;
@@ -37,6 +38,50 @@ export function LocationTrackingSimple({ device, timeRange, selectedDate, onDate
   const [error, setError] = useState<string | null>(null);
   const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
 
+  // Filter location data for the selected day
+  const getFilteredLocationData = () => {
+    if (!selectedDate || timeRange === '24h') {
+      return locationData;
+    }
+
+    // For day detail view, filter to only show data from the selected date
+    const selectedDateObj = new Date(selectedDate + 'T00:00:00-07:00'); // Start of day in Pacific time
+    const nextDayObj = new Date(selectedDate + 'T23:59:59.999-07:00'); // End of day in Pacific time
+
+    console.log('🔍 Filtering location data for selected day:', {
+      selectedDate,
+      selectedDateObj: selectedDateObj.toISOString(),
+      nextDayObj: nextDayObj.toISOString(),
+      totalLocations: locationData.length
+    });
+
+    const filteredData = locationData.filter(location => {
+      const locationDate = new Date(location.timestamp);
+      const isInRange = locationDate >= selectedDateObj && locationDate <= nextDayObj;
+      
+      if (isInRange) {
+        console.log('✅ Found location for selected day:', {
+          timestamp: location.timestamp,
+          locationDate: locationDate.toISOString(),
+          lat: location.latitude,
+          lng: location.longitude
+        });
+      }
+      
+      return isInRange;
+    });
+
+    console.log('📊 Location filtering result:', {
+      originalCount: locationData.length,
+      filteredCount: filteredData.length,
+      selectedDate
+    });
+
+    return filteredData;
+  };
+
+  const filteredLocationData = getFilteredLocationData();
+
   // Fetch location data based on time range
   useEffect(() => {
     console.log('🔍 LocationTrackingSimple useEffect triggered:', {
@@ -59,11 +104,14 @@ export function LocationTrackingSimple({ device, timeRange, selectedDate, onDate
       try {
         const params = new URLSearchParams({
           deviceId: device.deviceId,
-          timeRange,
-          ...(selectedDate && { selectedDate })
+          timeRange: timeRange
         });
 
-        const url = `/api/analytics/device/${device.deviceId}/locations?${params}`;
+        if (selectedDate) {
+          params.append('selectedDate', selectedDate);
+        }
+
+        const url = `/api/analytics/device/${device.deviceId}/locations?${params.toString()}`;
         console.log('🗺️ Fetching location data:', {
           deviceId: device.deviceId,
           timeRange,
@@ -78,15 +126,9 @@ export function LocationTrackingSimple({ device, timeRange, selectedDate, onDate
           statusText: response.statusText,
           ok: response.ok
         });
-        
+
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error('❌ Response not OK:', {
-            status: response.status,
-            statusText: response.statusText,
-            errorText
-          });
-          throw new Error(`Failed to fetch location data: ${response.statusText} - ${errorText}`);
+          throw new Error(`Failed to fetch location data: ${response.statusText}`);
         }
 
         const data = await response.json();
@@ -96,16 +138,18 @@ export function LocationTrackingSimple({ device, timeRange, selectedDate, onDate
           dateRange: data.dateRange,
           fullResponse: data
         });
-        
-        setLocationData(data.locations || []);
-        console.log('✅ Location data set successfully');
+
+        if (data.locations && Array.isArray(data.locations)) {
+          setLocationData(data.locations);
+          console.log('✅ Location data set successfully');
+        } else {
+          console.log('⚠️ No location data in response');
+          setLocationData([]);
+        }
       } catch (err) {
-        console.error('💥 Error fetching location data:', {
-          error: err,
-          message: err instanceof Error ? err.message : 'Unknown error',
-          stack: err instanceof Error ? err.stack : undefined
-        });
+        console.error('❌ Error fetching location data:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch location data');
+        setLocationData([]);
       } finally {
         setLoading(false);
         console.log('🏁 Location data fetch completed');
@@ -119,96 +163,94 @@ export function LocationTrackingSimple({ device, timeRange, selectedDate, onDate
   useEffect(() => {
     console.log('🗺️ Google Maps useEffect triggered:', {
       hasMapRef: !!mapRef.current,
-      locationDataLength: locationData.length,
+      locationDataLength: filteredLocationData.length,
       apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? 'Present' : 'Missing'
     });
 
-    if (!mapRef.current) {
+    if (!mapRef.current || filteredLocationData.length === 0) {
       console.log('❌ No map ref, skipping map initialization');
       return;
     }
 
-    const loader = new Loader({
-      apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-      version: 'weekly',
-      libraries: ['geometry'],
-    });
+    const initializeMap = async () => {
+      try {
+        console.log('🚀 Starting Google Maps loader...');
+        const loader = new Loader({
+          apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+          version: 'weekly',
+          libraries: ['geometry']
+        });
 
-    console.log('🚀 Starting Google Maps loader...');
-    loader.load().then(() => {
-      console.log('✅ Google Maps API loaded successfully');
-      setGoogleMapsLoaded(true);
-      if (mapRef.current) {
-        // Calculate center point from location data or use default
-        const center = locationData.length > 0 ? calculateCenter(locationData) : { lat: 37.7749, lng: -122.4194 };
+        await loader.load();
+        console.log('✅ Google Maps API loaded successfully');
+        setGoogleMapsLoaded(true);
+
+        // Calculate map center from filtered location data
+        const center = filteredLocationData.length > 0 
+          ? {
+              lat: filteredLocationData.reduce((sum, loc) => sum + loc.latitude, 0) / filteredLocationData.length,
+              lng: filteredLocationData.reduce((sum, loc) => sum + loc.longitude, 0) / filteredLocationData.length
+            }
+          : { lat: 49.2827, lng: -123.1207 }; // Default to Vancouver
+
         console.log('📍 Map center calculated:', center);
 
+        // Create map instance
         mapInstance.current = new (window as any).google.maps.Map(mapRef.current, {
           center,
-          zoom: 13,
-          mapId: 'DEMO_MAP_ID',
+          zoom: 15,
+          mapId: 'DEMO_MAP_ID'
         });
+
         console.log('🗺️ Google Map instance created successfully');
 
+        // Create info window
         infoWindowRef.current = new (window as any).google.maps.InfoWindow();
         console.log('💬 Info window created');
 
-        // Clear existing markers and polylines
-        clearMap();
+        // Clear existing markers
+        markersRef.current.forEach(marker => marker.setMap(null));
+        markersRef.current = [];
         console.log('🧹 Existing markers cleared');
 
-        // Add markers and route if we have data
-        if (locationData.length > 0) {
-          console.log('📍 Adding markers and route for', locationData.length, 'locations');
-          addLocationMarkers(mapInstance.current, locationData);
-          addRoutePolyline(mapInstance.current, locationData);
-          console.log('✅ Markers and route added successfully');
-        } else {
-          console.log('ℹ️ No location data to display on map');
-        }
-      } else {
-        console.log('❌ Map ref is null after API load');
-      }
-    }).catch((e) => {
-      console.error('💥 Error loading Google Maps API:', {
-        error: e,
-        message: e.message,
-        stack: e.stack
-      });
-      setError('Failed to load Google Maps API');
-    });
+        // Add markers and route
+        console.log('📍 Adding markers and route for', filteredLocationData.length, 'locations');
+        await addLocationMarkers();
+        await addRoutePolyline();
 
+        console.log('✅ Markers and route added successfully');
+      } catch (error) {
+        console.error('❌ Error initializing Google Maps:', error);
+        setError('Failed to initialize Google Maps');
+      }
+    };
+
+    initializeMap();
+
+    // Cleanup function
     return () => {
       console.log('🧹 Cleaning up Google Maps...');
-      // Cleanup markers and info window
-      clearMap();
-      if (infoWindowRef.current) {
-        infoWindowRef.current.close();
-        infoWindowRef.current = null;
+      if (markersRef.current) {
+        markersRef.current.forEach(marker => marker.setMap(null));
+        markersRef.current = [];
+      }
+      if (polylineRef.current) {
+        polylineRef.current.setMap(null);
+        polylineRef.current = null;
       }
     };
-  }, [locationData]);
+  }, [filteredLocationData, googleMapsLoaded]);
 
-  const calculateCenter = (locations: LocationData[]) => {
-    if (locations.length === 0) return { lat: 37.7749, lng: -122.4194 }; // Default to SF
+  const addLocationMarkers = async () => {
+    if (!mapInstance.current || !filteredLocationData.length) return;
 
-    const latSum = locations.reduce((sum, loc) => sum + loc.latitude, 0);
-    const lngSum = locations.reduce((sum, loc) => sum + loc.longitude, 0);
-
-    return {
-      lat: latSum / locations.length,
-      lng: lngSum / locations.length
-    };
-  };
-
-  const addLocationMarkers = (map: any, locations: LocationData[]) => {
     console.log('📍 Adding location markers:', {
-      mapExists: !!map,
-      locationsCount: locations.length,
-      sampleLocation: locations[0]
+      mapExists: !!mapInstance.current,
+      locationsCount: filteredLocationData.length,
+      sampleLocation: filteredLocationData[0]
     });
 
-    locations.forEach((location, index) => {
+    filteredLocationData.forEach((location, index) => {
       console.log(`📍 Creating marker ${index + 1}:`, {
         lat: location.latitude,
         lng: location.longitude,
@@ -217,32 +259,30 @@ export function LocationTrackingSimple({ device, timeRange, selectedDate, onDate
 
       const marker = new (window as any).google.maps.Marker({
         position: { lat: location.latitude, lng: location.longitude },
-        map,
+        map: mapInstance.current,
         title: `Location ${index + 1}`,
         icon: {
-          path: (window as any).google.maps.SymbolPath.CIRCLE,
-          scale: 7,
-          fillColor: index === 0 ? '#10B981' : index === locations.length - 1 ? '#EF4444' : '#3B82F6',
-          fillOpacity: 0.9,
-          strokeColor: '#FFFFFF',
-          strokeWeight: 2
+          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="10" cy="10" r="8" fill="${index === 0 ? '#10B981' : index === filteredLocationData.length - 1 ? '#EF4444' : '#3B82F6'}" stroke="white" stroke-width="2"/>
+            </svg>
+          `),
+          scaledSize: new (window as any).google.maps.Size(20, 20)
         }
       });
 
+      // Add click listener
       marker.addListener('click', () => {
-        console.log(`📍 Marker ${index + 1} clicked`);
-        if (infoWindowRef.current && mapInstance.current) {
-          infoWindowRef.current.setContent(`
-            <div style="padding: 8px;">
-              <h3 style="margin: 0 0 5px 0; font-size: 16px; color: #333;">Location ${index + 1}</h3>
-              <p style="margin: 0; font-size: 12px; color: #666;">Time: ${formatDateTimePST(new Date(location.timestamp))}</p>
-              <p style="margin: 0; font-size: 12px; color: #666;">Accuracy: ${location.accuracy?.toFixed(1) || 'N/A'}m</p>
-              ${location.battery_level ? `<p style="margin: 0; font-size: 12px; color: #666;">Battery: ${location.battery_level}%</p>` : ''}
-              <p style="margin: 0; font-size: 12px; color: #666;">Coordinates: ${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}</p>
-            </div>
-          `);
-          infoWindowRef.current.open(mapInstance.current, marker);
-        }
+        const content = `
+          <div class="p-2">
+            <h3 class="font-semibold text-sm">Location ${index + 1}</h3>
+            <p class="text-xs text-gray-600">${formatDateTimePST(new Date(location.timestamp))}</p>
+            <p class="text-xs font-mono">${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}</p>
+            ${location.accuracy ? `<p class="text-xs text-gray-500">±${location.accuracy.toFixed(1)}m</p>` : ''}
+          </div>
+        `;
+        infoWindowRef.current.setContent(content);
+        infoWindowRef.current.open(mapInstance.current, marker);
       });
 
       markersRef.current.push(marker);
@@ -251,46 +291,49 @@ export function LocationTrackingSimple({ device, timeRange, selectedDate, onDate
     console.log('✅ All markers added successfully');
   };
 
-  const addRoutePolyline = (map: any, locations: LocationData[]) => {
+  const addRoutePolyline = async () => {
+    if (!mapInstance.current || !filteredLocationData.length || filteredLocationData.length < 2) return;
+
     console.log('🛣️ Adding route polyline:', {
-      mapExists: !!map,
-      locationsCount: locations.length,
-      canCreatePolyline: locations.length >= 2
+      mapExists: !!mapInstance.current,
+      locationsCount: filteredLocationData.length,
+      canCreatePolyline: filteredLocationData.length >= 2
     });
 
-    if (locations.length < 2) {
-      console.log('❌ Not enough locations for polyline (need at least 2)');
-      return;
-    }
-
-    const path = locations.map(loc => ({
-      lat: loc.latitude,
-      lng: loc.longitude
+    const path = filteredLocationData.map(location => ({
+      lat: location.latitude,
+      lng: location.longitude
     }));
 
     console.log('🛣️ Creating polyline with path:', path.slice(0, 3), '...');
 
-    const polyline = new (window as any).google.maps.Polyline({
+    polylineRef.current = new (window as any).google.maps.Polyline({
       path,
       geodesic: true,
-      strokeColor: '#EF4444',
+      strokeColor: '#3B82F6',
       strokeOpacity: 0.8,
-      strokeWeight: 4
+      strokeWeight: 3,
+      map: mapInstance.current
     });
 
-    polyline.setMap(map);
-    polylineRef.current = polyline;
     console.log('✅ Polyline added successfully');
   };
 
-  const clearMap = () => {
-    markersRef.current.forEach(marker => marker.setMap(null));
-    markersRef.current = [];
-    
-    if (polylineRef.current) {
-      polylineRef.current.setMap(null);
-      polylineRef.current = null;
+  const calculateTotalDistance = () => {
+    if (!googleMapsLoaded || !(window as any).google?.maps?.geometry?.spherical || filteredLocationData.length < 2) {
+      console.log('⚠️ Google Maps API not loaded yet, skipping distance calculation');
+      return 0;
     }
+
+    let totalDistance = 0;
+    for (let i = 0; i < filteredLocationData.length - 1; i++) {
+      const from = new (window as any).google.maps.LatLng(filteredLocationData[i].latitude, filteredLocationData[i].longitude);
+      const to = new (window as any).google.maps.LatLng(filteredLocationData[i + 1].latitude, filteredLocationData[i + 1].longitude);
+      const distance = (window as any).google.maps.geometry.spherical.computeDistanceBetween(from, to);
+      totalDistance += distance;
+    }
+
+    return totalDistance / 1000; // Convert to kilometers
   };
 
   const getTimeRangeDescription = () => {
@@ -307,56 +350,129 @@ export function LocationTrackingSimple({ device, timeRange, selectedDate, onDate
   };
 
   const getLocationStats = () => {
-    if (locationData.length === 0) return null;
+    if (filteredLocationData.length === 0) return null;
 
-    const totalDistance = calculateTotalDistance(locationData);
-    const avgAccuracy = locationData.reduce((sum, loc) => sum + (loc.accuracy || 0), 0) / locationData.length;
-    const timeSpan = locationData.length > 1 
-      ? new Date(locationData[locationData.length - 1].timestamp).getTime() - new Date(locationData[0].timestamp).getTime()
+    const totalDistance = calculateTotalDistance();
+    const avgAccuracy = filteredLocationData.reduce((sum, loc) => sum + (loc.accuracy || 0), 0) / filteredLocationData.length;
+    const timeSpan = filteredLocationData.length > 1 
+      ? new Date(filteredLocationData[filteredLocationData.length - 1].timestamp).getTime() - new Date(filteredLocationData[0].timestamp).getTime()
       : 0;
 
     return {
-      totalPoints: locationData.length,
-      totalDistance: totalDistance / 1000, // Convert to km
-      avgAccuracy: avgAccuracy,
+      totalPoints: filteredLocationData.length,
+      totalDistance,
+      avgAccuracy,
       timeSpan: timeSpan / (1000 * 60 * 60), // Convert to hours
-      googleMapsLoaded // Include this to trigger re-render when Google Maps loads
+      googleMapsLoaded
     };
   };
 
-  const calculateTotalDistance = (locations: LocationData[]) => {
-    if (locations.length < 2) return 0;
-    
-    // Check if Google Maps API is loaded
-    if (!(window as any).google?.maps?.geometry?.spherical) {
-      console.log('⚠️ Google Maps API not loaded yet, skipping distance calculation');
-      return 0;
-    }
-
-    let totalDistance = 0;
-    for (let i = 1; i < locations.length; i++) {
-      const prev = locations[i - 1];
-      const curr = locations[i];
-      
-      const distance = (window as any).google.maps.geometry.spherical.computeDistanceBetween(
-        new (window as any).google.maps.LatLng(prev.latitude, prev.longitude),
-        new (window as any).google.maps.LatLng(curr.latitude, curr.longitude)
-      );
-      
-      totalDistance += distance;
-    }
-
-    return totalDistance;
-  };
-
   const stats = getLocationStats();
+
+  // Define renderMainMapView function before it's used
+  const renderMainMapView = () => {
+    return (
+      <div className="space-y-4">
+        {/* Location Stats */}
+        {stats && (
+          <div className="grid grid-cols-4 gap-4">
+            <Card className="bg-blue-50">
+              <CardContent className="p-3">
+                <div className="text-2xl font-bold text-blue-600">{stats.totalPoints}</div>
+                <div className="text-sm text-blue-700">Location Points</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-green-50">
+              <CardContent className="p-3">
+                <div className="text-2xl font-bold text-green-600">{stats.totalDistance.toFixed(1)} km</div>
+                <div className="text-sm text-green-700">Total Distance</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-purple-50">
+              <CardContent className="p-3">
+                <div className="text-2xl font-bold text-purple-600">{stats.avgAccuracy.toFixed(1)}m</div>
+                <div className="text-sm text-purple-700">Avg Accuracy</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-orange-50">
+              <CardContent className="p-3">
+                <div className="text-2xl font-bold text-orange-600">{stats.timeSpan.toFixed(1)}h</div>
+                <div className="text-sm text-orange-700">Time Span</div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Map */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Route className="h-5 w-5" />
+              Route Map - {getTimeRangeDescription()}
+              {selectedDate && (
+                <span className="text-sm text-gray-600 ml-2">
+                  ({formatDateTimePST(new Date(selectedDate + 'T00:00:00-07:00'), { 
+                    weekday: 'long', 
+                    month: 'long', 
+                    day: 'numeric', 
+                    timeZone: 'America/Los_Angeles' 
+                  })})
+                </span>
+              )}
+            </CardTitle>
+            <CardDescription>
+              {filteredLocationData.length > 0 
+                ? `Showing ${filteredLocationData.length} location points${selectedDate ? ` for ${selectedDate}` : ` from ${getTimeRangeDescription().toLowerCase()}`}`
+                : 'No location data available for the selected time range'
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div 
+              ref={mapRef} 
+              className="w-full h-96 rounded-lg border border-gray-200"
+              style={{ minHeight: '400px' }}
+            />
+            
+            {/* Location History */}
+            {filteredLocationData.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Location History</h4>
+                <div className="max-h-48 overflow-y-auto space-y-1">
+                  {filteredLocationData.slice(0, 10).map((location, index) => (
+                    <div key={index} className="flex items-center justify-between text-xs bg-gray-50 p-2 rounded">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-3 w-3 text-blue-500" />
+                        <span>{location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}</span>
+                      </div>
+                      <div className="text-gray-500">
+                        {formatDateTimePST(new Date(location.timestamp))}
+                      </div>
+                    </div>
+                  ))}
+                  {filteredLocationData.length > 10 && (
+                    <div className="text-xs text-gray-500 text-center py-2">
+                      ... and {filteredLocationData.length - 10} more locations
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
 
   console.log('🎨 Render state:', {
     loading,
     error,
     locationDataLength: locationData.length,
+    filteredLocationDataLength: filteredLocationData.length,
     hasMapRef: !!mapRef.current,
-    googleMapsLoaded
+    googleMapsLoaded,
+    timeRange,
+    selectedDate
   });
 
   if (loading) {
@@ -366,9 +482,9 @@ export function LocationTrackingSimple({ device, timeRange, selectedDate, onDate
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5" />
-            Device Location Path
+            Loading Location Data
           </CardTitle>
-          <CardDescription>Loading location data...</CardDescription>
+          <CardDescription>Fetching location information...</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-64">
@@ -384,163 +500,116 @@ export function LocationTrackingSimple({ device, timeRange, selectedDate, onDate
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-red-600">
             <MapPin className="h-5 w-5" />
-            Device Location Path
+            Error Loading Location Data
           </CardTitle>
-          <CardDescription>Error loading location data</CardDescription>
+          <CardDescription className="text-red-600">{error}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-red-600">
-            <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>{error}</p>
+          <div className="text-center py-8">
+            <p className="text-red-600 mb-4">Failed to load location data</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Retry
+            </button>
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  // Show message when no location data is available
-  if (!loading && !error && locationData.length === 0) {
-    console.log('📭 Rendering no data state');
+  // Determine which view to render
+  const shouldShowWeekOverview = timeRange === '7d' && !selectedDate;
+  const shouldShowDayDetail = selectedDate && (timeRange === '7d' || timeRange === '30d');
+
+  console.log('🎨 Determining render view:', {
+    timeRange,
+    selectedDate,
+    shouldShowWeekOverview,
+    shouldShowDayDetail
+  });
+
+  // Show week overview for 7d view without selected date
+  if (shouldShowWeekOverview) {
+    console.log('📅 Rendering week overview');
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5" />
-            Device Location Path - {getTimeRangeDescription()}
-          </CardTitle>
-          <CardDescription>No location data available for the selected time range</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No GPS coordinates found for this device in the selected time period.</p>
-            <p className="text-sm mt-2">Try selecting a different time range or check if the device has location services enabled.</p>
-          </div>
-        </CardContent>
-      </Card>
+      <WeekLocationChart
+        device={device}
+        onDayClick={onDateSelect || (() => {})}
+        selectedDate={selectedDate}
+      />
+    );
+  }
+
+  // Show day detail view when a specific day is selected
+  if (shouldShowDayDetail) {
+    console.log('📅 Rendering day detail view for:', selectedDate);
+    return (
+      <div className="space-y-4">
+        {/* Week Overview at the top - always visible for easy day switching */}
+        <WeekLocationChart
+          device={device}
+          onDayClick={onDateSelect || (() => {})}
+          selectedDate={selectedDate}
+        />
+
+        {/* Day Detail Header */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  Day Detail - {(() => {
+                    if (!selectedDate) return '';
+                    const date = new Date(selectedDate + 'T00:00:00-07:00');
+                    return date.toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric',
+                      timeZone: 'America/Los_Angeles'
+                    });
+                  })()}
+                </CardTitle>
+                <CardDescription className="text-blue-700">
+                  Detailed location data for {(() => {
+                    if (!selectedDate) return '';
+                    const date = new Date(selectedDate + 'T00:00:00-07:00');
+                    return date.toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric',
+                      timeZone: 'America/Los_Angeles'
+                    });
+                  })()}
+                </CardDescription>
+              </div>
+              <button
+                onClick={() => onDateSelect?.(undefined)}
+                className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                title="Close day detail"
+              >
+                <Navigation className="h-5 w-5" />
+              </button>
+            </div>
+          </CardHeader>
+        </Card>
+
+        {/* Day Detail Content - Same as main view but filtered for selected date */}
+        {renderMainMapView()}
+      </div>
     );
   }
 
   console.log('🗺️ Rendering main map view with data:', {
     stats,
     locationDataLength: locationData.length,
+    filteredLocationDataLength: filteredLocationData.length,
     hasMapRef: !!mapRef.current
   });
 
-  return (
-    <div className="space-y-4">
-      {/* Location Stats */}
-      {stats && (
-        <div className="grid grid-cols-4 gap-4">
-          <Card className="bg-blue-50">
-            <CardContent className="p-3">
-              <div className="text-2xl font-bold text-blue-600">{stats.totalPoints}</div>
-              <div className="text-sm text-blue-700">Location Points</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-green-50">
-            <CardContent className="p-3">
-              <div className="text-2xl font-bold text-green-600">{stats.totalDistance.toFixed(1)} km</div>
-              <div className="text-sm text-green-700">Total Distance</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-purple-50">
-            <CardContent className="p-3">
-              <div className="text-2xl font-bold text-purple-600">{stats.avgAccuracy.toFixed(1)}m</div>
-              <div className="text-sm text-purple-700">Avg Accuracy</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-orange-50">
-            <CardContent className="p-3">
-              <div className="text-2xl font-bold text-orange-600">{stats.timeSpan.toFixed(1)}h</div>
-              <div className="text-sm text-orange-700">Time Span</div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Map */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Route className="h-5 w-5" />
-            Route Map - {getTimeRangeDescription()}
-            {selectedDate && (
-              <span className="text-sm text-gray-600 ml-2">
-                ({formatDateTimePST(new Date(selectedDate + 'T00:00:00-07:00'), { 
-                  weekday: 'long', 
-                  month: 'long', 
-                  day: 'numeric', 
-                  timeZone: 'America/Los_Angeles' 
-                })})
-              </span>
-            )}
-          </CardTitle>
-          <CardDescription>
-            Device movement path with GPS coordinates
-            {locationData.length > 0 && (
-              <span className="block text-xs text-gray-500 mt-1">
-                • Green marker: Start point • Red marker: End point • Blue markers: Intermediate points
-              </span>
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div 
-            ref={mapRef} 
-            style={{ height: '400px', width: '100%', borderRadius: '0.75rem' }}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Location Details */}
-      {locationData.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Navigation className="h-5 w-5" />
-              Location History
-            </CardTitle>
-            <CardDescription>
-              Chronological list of device locations
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {locationData.map((location, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${
-                      index === 0 ? 'bg-green-500' : 
-                      index === locationData.length - 1 ? 'bg-red-500' : 'bg-blue-500'
-                    }`} />
-                    <div>
-                      <p className="text-sm font-medium">
-                        Point {index + 1}
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        {formatDateTimePST(new Date(location.timestamp))}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-mono">
-                      {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
-                    </p>
-                    {location.accuracy && (
-                      <p className="text-xs text-gray-600">
-                        ±{location.accuracy.toFixed(1)}m
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
+  return renderMainMapView();
 }
