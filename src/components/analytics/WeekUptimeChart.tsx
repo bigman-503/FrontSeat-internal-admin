@@ -227,7 +227,7 @@ export function WeekUptimeChart({ data, onDayClick, selectedDate }: WeekUptimeCh
       {/* Week Timeline */}
       <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50">
         <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-500 rounded-lg">
                 <Calendar className="h-6 w-6 text-white" />
@@ -239,26 +239,6 @@ export function WeekUptimeChart({ data, onDayClick, selectedDate }: WeekUptimeCh
                 <CardDescription className="text-sm text-gray-600 mt-1">
                   Click on any day to view detailed 24-hour timeline
                 </CardDescription>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="text-right">
-                <p className="text-xs text-gray-500">Week Trend</p>
-                <div className="flex items-center gap-1">
-                  {averageUptime >= 80 ? (
-                    <TrendingUp className="h-4 w-4 text-green-500" />
-                  ) : averageUptime >= 60 ? (
-                    <TrendingUp className="h-4 w-4 text-yellow-500" />
-                  ) : (
-                    <TrendingUp className="h-4 w-4 text-red-500 rotate-180" />
-                  )}
-                  <span className={`text-sm font-semibold ${
-                    averageUptime >= 80 ? 'text-green-600' :
-                    averageUptime >= 60 ? 'text-yellow-600' : 'text-red-600'
-                  }`}>
-                    {averageUptime >= 60 ? 'Stable' : 'Needs Attention'}
-                  </span>
-                </div>
               </div>
             </div>
           </div>
