@@ -39,10 +39,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const bigquery = new BigQuery(bigqueryConfig);
 
-    // Get last 7 days date range
+    // Get last 7 days date range (including current day)
     const now = new Date();
     const weekAgo = new Date(now);
-    weekAgo.setDate(weekAgo.getDate() - 7);
+    weekAgo.setDate(weekAgo.getDate() - 6); // 6 days ago + today = 7 days total
     
     const weekAgoPSTString = weekAgo.toLocaleString("en-US", {
       timeZone: "America/Los_Angeles",
@@ -66,15 +66,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const targetTable = 'heartbeats';
     const projectId = 'frontseat-admin';
 
-    // Build BigQuery query for weekly location data aggregated by day
+    // Build BigQuery query for raw location data (same as main locations endpoint)
     const query = `
       SELECT
-        DATE(location_timestamp, "America/Los_Angeles") as date,
-        COUNT(*) as location_count,
-        COUNT(DISTINCT DATE(location_timestamp, "America/Los_Angeles")) as active_days,
-        AVG(location_accuracy) as avg_accuracy,
-        FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', DATETIME(MIN(location_timestamp), "America/Los_Angeles")) as first_location,
-        FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', DATETIME(MAX(location_timestamp), "America/Los_Angeles")) as last_location
+        latitude,
+        longitude,
+        FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', DATETIME(location_timestamp, "America/Los_Angeles")) as timestamp,
+        location_accuracy,
+        battery_level
       FROM
         \`${projectId}.${targetDataset}.${targetTable}\`
       WHERE
@@ -82,11 +81,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         AND latitude IS NOT NULL
         AND longitude IS NOT NULL
         AND location_timestamp >= PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S %Z', CONCAT(@startDate, ' 00:00:00 America/Los_Angeles'))
-        AND location_timestamp < PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S %Z', CONCAT(FORMAT_DATE('%Y-%m-%d', DATE_ADD(PARSE_DATE('%Y-%m-%d', @endDate), INTERVAL 1 DAY)), ' 00:00:00 America/Los_Angeles'))
-      GROUP BY
-        DATE(location_timestamp, "America/Los_Angeles")
+        AND location_timestamp <= PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S %Z', CONCAT(@endDate, ' 23:59:59 America/Los_Angeles'))
       ORDER BY
-        date ASC
+        location_timestamp ASC
     `;
 
     const options = {
@@ -101,14 +98,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('🔍 BigQuery week location query:', {
       startDate,
       endDate,
-      deviceId
+      deviceId,
+      currentTime: new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }),
+      queryType: 'raw-data-aggregation'
     });
 
     const [rows] = await bigquery.query(options);
 
     console.log('📍 Week location data fetched:', {
-      totalDays: rows.length,
-      sampleDay: rows[0]
+      totalLocations: rows.length,
+      sampleLocation: rows[0]
+    });
+
+    // Group raw data by day
+    const dayGroups: { [key: string]: any[] } = {};
+    rows.forEach((location: any) => {
+      const date = location.timestamp.split('T')[0]; // Extract date from timestamp
+      if (!dayGroups[date]) {
+        dayGroups[date] = [];
+      }
+      dayGroups[date].push(location);
+    });
+
+    console.log('📊 Day groups created:', {
+      groupCount: Object.keys(dayGroups).length,
+      groupKeys: Object.keys(dayGroups),
+      sampleGroup: Object.keys(dayGroups).length > 0 ? {
+        date: Object.keys(dayGroups)[0],
+        count: dayGroups[Object.keys(dayGroups)[0]].length
+      } : null
     });
 
     // Generate 7 days of data (including days with no data)
@@ -125,12 +143,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const [month, day, year] = dateStr.split('/');
       const formattedDate = `${year}-${month}-${day}`;
       
-      const dayData = rows.find((row: any) => row.date === formattedDate);
+      const dayLocations = dayGroups[formattedDate] || [];
       
-      if (dayData) {
-        // Calculate distance for the day (simplified - would need actual coordinate data)
-        const timeSpan = new Date(dayData.last_location).getTime() - new Date(dayData.first_location).getTime();
+      if (dayLocations.length > 0) {
+        // Calculate statistics for the day
+        const firstLocation = dayLocations[0];
+        const lastLocation = dayLocations[dayLocations.length - 1];
+        const timeSpan = new Date(lastLocation.timestamp).getTime() - new Date(firstLocation.timestamp).getTime();
         const timeSpanHours = timeSpan / (1000 * 60 * 60);
+        const avgAccuracy = dayLocations.reduce((sum, loc) => sum + (loc.location_accuracy || 0), 0) / dayLocations.length;
+        
+        // Calculate total distance (simplified - would need proper distance calculation)
+        const totalDistance = Math.max(0, dayLocations.length * 0.1);
         
         days.push({
           date: formattedDate,
@@ -138,9 +162,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             weekday: 'long', 
             timeZone: 'America/Los_Angeles' 
           }),
-          locationCount: parseInt(dayData.location_count),
-          totalDistance: Math.max(0, dayData.location_count * 0.1), // Simplified distance calculation
-          avgAccuracy: parseFloat(dayData.avg_accuracy) || 0,
+          locationCount: dayLocations.length,
+          totalDistance: totalDistance,
+          avgAccuracy: avgAccuracy,
           timeSpan: timeSpanHours,
           hasData: true
         });
@@ -165,7 +189,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('✅ Processed week location data:', {
       totalDays: days.length,
       daysWithData: days.filter(d => d.hasData).length,
-      sampleDay: days[0]
+      sampleDay: days[0],
+      allProcessedDays: days.map(day => ({
+        date: day.date,
+        dayName: day.dayName,
+        locationCount: day.locationCount,
+        hasData: day.hasData
+      }))
     });
 
     return res.status(200).json({

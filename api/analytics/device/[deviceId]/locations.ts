@@ -61,7 +61,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Get date range based on time range
     const dateRange = getDateRangeForLocation(timeRange as string, selectedDate as string);
-    console.log('📅 Date range calculated:', dateRange);
+    console.log('📅 Date range calculated:', {
+      timeRange,
+      selectedDate,
+      dateRange,
+      currentTime: new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
+    });
     
     const targetDataset = 'frontseat_analytics';
     const targetTable = 'heartbeats';
@@ -75,26 +80,53 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // Build BigQuery query for location data
-    const query = `
-      SELECT
-        latitude,
-        longitude,
-        FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', DATETIME(location_timestamp, "America/Los_Angeles")) as location_timestamp,
-        location_accuracy,
-        battery_level,
-        device_id,
-        device_name
-      FROM
-        \`${projectId}.${targetDataset}.${targetTable}\`
-      WHERE
-        (device_id = @deviceId OR device_name = @deviceId)
-        AND latitude IS NOT NULL
-        AND longitude IS NOT NULL
-        AND location_timestamp >= PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S %Z', CONCAT(@startDate, ' 00:00:00 America/Los_Angeles'))
-        AND location_timestamp < PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S %Z', CONCAT(FORMAT_DATE('%Y-%m-%d', DATE_ADD(PARSE_DATE('%Y-%m-%d', @endDate), INTERVAL 1 DAY)), ' 00:00:00 America/Los_Angeles'))
-      ORDER BY
-        location_timestamp ASC
-    `;
+    let query = '';
+    
+    if (timeRange === '24h') {
+      // For 24h view, use the full day range to capture rolling 24-hour window
+      query = `
+        SELECT
+          latitude,
+          longitude,
+          FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', DATETIME(location_timestamp, "America/Los_Angeles")) as location_timestamp,
+          location_accuracy,
+          battery_level,
+          device_id,
+          device_name
+        FROM
+          \`${projectId}.${targetDataset}.${targetTable}\`
+        WHERE
+          (device_id = @deviceId OR device_name = @deviceId)
+          AND latitude IS NOT NULL
+          AND longitude IS NOT NULL
+          AND location_timestamp >= PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S %Z', CONCAT(@startDate, ' 00:00:00 America/Los_Angeles'))
+          AND location_timestamp <= PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S %Z', CONCAT(@endDate, ' 23:59:59 America/Los_Angeles'))
+        ORDER BY
+          location_timestamp ASC
+      `;
+    } else {
+      // For 7d and 30d views, use the standard day boundary approach
+      query = `
+        SELECT
+          latitude,
+          longitude,
+          FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', DATETIME(location_timestamp, "America/Los_Angeles")) as location_timestamp,
+          location_accuracy,
+          battery_level,
+          device_id,
+          device_name
+        FROM
+          \`${projectId}.${targetDataset}.${targetTable}\`
+        WHERE
+          (device_id = @deviceId OR device_name = @deviceId)
+          AND latitude IS NOT NULL
+          AND longitude IS NOT NULL
+          AND location_timestamp >= PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S %Z', CONCAT(@startDate, ' 00:00:00 America/Los_Angeles'))
+          AND location_timestamp < PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S %Z', CONCAT(FORMAT_DATE('%Y-%m-%d', DATE_ADD(PARSE_DATE('%Y-%m-%d', @endDate), INTERVAL 1 DAY)), ' 00:00:00 America/Los_Angeles'))
+        ORDER BY
+          location_timestamp ASC
+      `;
+    }
 
     const options = {
       query,
@@ -106,9 +138,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     };
 
     console.log('🔍 BigQuery location query:', {
+      timeRange,
       startDate: dateRange.startDate,
       endDate: dateRange.endDate,
       deviceId,
+      queryType: timeRange === '24h' ? 'rolling-24h' : 'standard-day-boundary',
       query: query.substring(0, 200) + '...'
     });
 
@@ -192,12 +226,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-function getDateRangeForLocation(timeRange: string, selectedDate?: string): { startDate: string; endDate: string } {
+function getDateRangeForLocation(timeRange: string, selectedDate?: string): { startDate: string; endDate: string; startTime?: string; endTime?: string } {
   const now = new Date();
   
   switch (timeRange) {
     case '24h':
-      // Last 24 hours from current time
+      // For 24h view, use rolling 24-hour window from current time
       const yesterday24h = new Date(now);
       yesterday24h.setDate(yesterday24h.getDate() - 1);
       
@@ -219,7 +253,13 @@ function getDateRangeForLocation(timeRange: string, selectedDate?: string): { st
       const [tMonth, tDay, tYear] = today24hPSTString.split('/');
       const endDate24h = `${tYear}-${tMonth}-${tDay}`;
       
-      return { startDate: startDate24h, endDate: endDate24h };
+      // For 24h view, we need to include both days to capture the rolling window
+      return { 
+        startDate: startDate24h, 
+        endDate: endDate24h,
+        startTime: '00:00:00',
+        endTime: '23:59:59'
+      };
 
     case '7d':
       // Last 7 days

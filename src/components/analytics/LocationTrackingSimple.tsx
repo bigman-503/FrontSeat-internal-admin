@@ -437,24 +437,23 @@ export function LocationTrackingSimple({ device, timeRange, selectedDate, onDate
             {/* Location History */}
             {filteredLocationData.length > 0 && (
               <div className="mt-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Location History</h4>
-                <div className="max-h-48 overflow-y-auto space-y-1">
-                  {filteredLocationData.slice(0, 10).map((location, index) => (
-                    <div key={index} className="flex items-center justify-between text-xs bg-gray-50 p-2 rounded">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">
+                  Location History ({filteredLocationData.length} points)
+                </h4>
+                <div className="max-h-80 overflow-y-auto space-y-1 border border-gray-200 rounded-lg p-2 bg-gray-50">
+                  {filteredLocationData.map((location, index) => (
+                    <div key={index} className="flex items-center justify-between text-xs bg-white p-2 rounded border border-gray-100 hover:bg-gray-50 transition-colors">
                       <div className="flex items-center gap-2">
-                        <MapPin className="h-3 w-3 text-blue-500" />
-                        <span>{location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}</span>
+                        <MapPin className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                        <span className="font-mono text-gray-700">
+                          {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+                        </span>
                       </div>
-                      <div className="text-gray-500">
+                      <div className="text-gray-500 text-right">
                         {formatDateTimePST(new Date(location.timestamp))}
                       </div>
                     </div>
                   ))}
-                  {filteredLocationData.length > 10 && (
-                    <div className="text-xs text-gray-500 text-center py-2">
-                      ... and {filteredLocationData.length - 10} more locations
-                    </div>
-                  )}
                 </div>
               </div>
             )}
