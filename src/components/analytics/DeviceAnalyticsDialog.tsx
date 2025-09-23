@@ -19,6 +19,7 @@ import { useUptimeData } from '@/hooks/useUptimeData';
 import { SimpleUptimeChart } from './SimpleUptimeChart';
 import { WeekUptimeChart } from './WeekUptimeChart';
 import { MonthUptimeChart } from './MonthUptimeChart';
+import { LocationTrackingSimple } from './LocationTrackingSimple';
 import { LoadingState } from './LoadingState';
 import { ErrorState } from './ErrorState';
 
@@ -35,6 +36,9 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
   // Simple chart controls
   const [timeRange, setTimeRange] = React.useState<string>('24h');
   const [selectedDate, setSelectedDate] = React.useState<string | undefined>(undefined);
+
+  // Tab state to prevent automatic switching
+  const [activeTab, setActiveTab] = React.useState<string>('uptime');
 
   // Month navigation state
   const [currentMonth, setCurrentMonth] = React.useState<Date>(new Date());
@@ -232,10 +236,9 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
             <>
 
               {/* Analytics Tabs */}
-              <Tabs defaultValue="uptime" className="space-y-4">
-                <TabsList className="grid w-full grid-cols-5">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="uptime">Device Uptime</TabsTrigger>
-                  <TabsTrigger value="timeline">Timeline</TabsTrigger>
                   <TabsTrigger value="location">Location Path</TabsTrigger>
                   <TabsTrigger value="performance">Performance</TabsTrigger>
                   <TabsTrigger value="battery">Battery</TabsTrigger>
@@ -307,13 +310,10 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
                       selectedDate={selectedDate}
                     />
                   )}
-                </TabsContent>
 
-                {/* Selected Day Detail View - Outside of time range conditions */}
+                {/* Selected Day Detail View - Inside uptime tab */}
                 {selectedDate && (
-                  <>
-                    {console.log('🎯 Rendering Day Detail for:', selectedDate)}
-                    <Card className="mt-6 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <Card className="mt-6 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -363,47 +363,33 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
                       />
                     </CardContent>
                   </Card>
-                  </>
                 )}
-
-
-                <TabsContent value="timeline" className="space-y-4">
-                  {/* Timeline content would go here */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Clock className="h-5 w-5" />
-                        Detailed Timeline View
-                      </CardTitle>
-                      <CardDescription>
-                        Chronological view of device status changes with exact timestamps and session details
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>Timeline view coming soon...</p>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </TabsContent>
 
                 <TabsContent value="location" className="space-y-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <MapPin className="h-5 w-5" />
-                        Device Location Path
-                      </CardTitle>
-                      <CardDescription>Device movement over time based on GPS coordinates</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-center py-8 text-muted-foreground">
-                        <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                        <p>Location map coming soon...</p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  {/* Time Range Selector for Location */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <label className="text-sm font-medium">Time Range:</label>
+                      <select
+                        value={timeRange}
+                        onChange={(e) => setTimeRange(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="24h">Last 24 Hours</option>
+                        <option value="7d">Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  {/* Location Tracking Component */}
+                  <LocationTrackingSimple
+                    device={device}
+                    timeRange={timeRange}
+                    selectedDate={selectedDate}
+                    onDateSelect={setSelectedDate}
+                  />
                 </TabsContent>
 
                 <TabsContent value="performance" className="space-y-4">
