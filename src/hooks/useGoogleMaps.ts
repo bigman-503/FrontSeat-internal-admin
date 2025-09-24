@@ -22,7 +22,7 @@ export function useGoogleMaps() {
   });
 
   const mapRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
+  const markersRef = useRef<(google.maps.marker.AdvancedMarkerElement | google.maps.Marker)[]>([]);
   const polylinesRef = useRef<google.maps.Polyline[]>([]);
 
   // Initialize Google Maps API
@@ -47,7 +47,7 @@ export function useGoogleMaps() {
         globalLoader = new Loader({
           apiKey,
           version: 'weekly',
-          libraries: ['geometry']
+          libraries: ['geometry', 'places', 'marker']
         });
       }
 
@@ -83,7 +83,13 @@ export function useGoogleMaps() {
     }
     
     if (!mapRef.current) {
-      console.log('❌ Map ref is null');
+      console.log('❌ Map ref is null, retrying in next tick');
+      // Retry after a short delay to allow ref to be set
+      setTimeout(() => {
+        if (mapRef.current) {
+          createMap(center, zoom);
+        }
+      }, 100);
       return null;
     }
 
@@ -98,7 +104,7 @@ export function useGoogleMaps() {
       const map = new google.maps.Map(mapRef.current, {
         center,
         zoom,
-        // Remove mapId to allow custom styles
+        mapId: 'DEMO_MAP_ID', // Required for Advanced Markers
         styles: [
           {
             featureType: 'poi',
@@ -125,7 +131,15 @@ export function useGoogleMaps() {
 
   // Clear all markers and polylines
   const clearMap = useCallback(() => {
-    markersRef.current.forEach(marker => marker.setMap(null));
+    markersRef.current.forEach(marker => {
+      if ('map' in marker) {
+        // AdvancedMarkerElement
+        marker.map = null;
+      } else {
+        // Regular Marker
+        marker.setMap(null);
+      }
+    });
     markersRef.current = [];
     
     polylinesRef.current.forEach(polyline => polyline.setMap(null));
@@ -145,21 +159,57 @@ export function useGoogleMaps() {
 
     locations.forEach((location, index) => {
       try {
-        const marker = new google.maps.Marker({
-          position: { lat: location.latitude, lng: location.longitude },
-          map: state.map,
-          title: `Location ${index + 1}`,
-          icon: {
-            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="8" fill="#3B82F6" stroke="white" stroke-width="2"/>
-                <circle cx="12" cy="12" r="3" fill="white"/>
-              </svg>
-            `),
-            scaledSize: new google.maps.Size(24, 24),
-            anchor: new google.maps.Point(12, 12)
-          }
-        });
+        let marker;
+        
+        // Try to use AdvancedMarkerElement if available, otherwise fall back to Marker
+        if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+          marker = new google.maps.marker.AdvancedMarkerElement({
+            position: { lat: location.latitude, lng: location.longitude },
+            map: state.map,
+            title: `Location ${index + 1}`,
+            content: document.createElement('div'),
+          });
+          
+          // Set custom marker content
+          const markerContent = marker.content as HTMLElement;
+          markerContent.innerHTML = `
+            <div style="
+              width: 24px; 
+              height: 24px; 
+              background: #3B82F6; 
+              border: 2px solid white; 
+              border-radius: 50%; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            ">
+              <div style="
+                width: 8px; 
+                height: 8px; 
+                background: white; 
+                border-radius: 50%;
+              "></div>
+            </div>
+          `;
+        } else {
+          // Fallback to regular Marker
+          marker = new google.maps.Marker({
+            position: { lat: location.latitude, lng: location.longitude },
+            map: state.map,
+            title: `Location ${index + 1}`,
+            icon: {
+              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="8" fill="#3B82F6" stroke="white" stroke-width="2"/>
+                  <circle cx="12" cy="12" r="3" fill="white"/>
+                </svg>
+              `),
+              scaledSize: new google.maps.Size(24, 24),
+              anchor: new google.maps.Point(12, 12)
+            }
+          });
+        }
 
         if (onMarkerClick) {
           marker.addListener('click', () => onMarkerClick(location));

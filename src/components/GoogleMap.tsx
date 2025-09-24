@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { Loader } from '@googlemaps/js-api-loader';
 import { Device } from '@/types/device';
 import { formatDateTimePST } from '@/lib/dateUtils';
+import { useGoogleMaps } from '@/hooks/useGoogleMaps';
 
 interface GoogleMapProps {
   devices: Device[];
@@ -16,88 +16,133 @@ export const GoogleMap: React.FC<GoogleMapProps> = ({
   devices,
   selectedDevice,
   onDeviceSelect,
-  center,
+  center, 
   zoom,
   height,
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
+  const markersRef = useRef<(google.maps.marker.AdvancedMarkerElement | google.maps.Marker)[]>([]);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+  
+  const { isLoaded, initializeMaps } = useGoogleMaps();
 
   useEffect(() => {
-    const loader = new Loader({
-      apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-      version: 'weekly',
-      libraries: ['places'],
-    });
+    initializeMaps();
+  }, [initializeMaps]);
 
-    loader.load().then(() => {
-      if (mapRef.current) {
-        mapInstance.current = new google.maps.Map(mapRef.current, {
-          center,
-          zoom,
-          mapId: 'DEMO_MAP_ID', // Replace with your actual Map ID if using Cloud-based styling
-        });
+  useEffect(() => {
+    if (isLoaded && mapRef.current) {
+      mapInstance.current = new google.maps.Map(mapRef.current, {
+        center,
+        zoom,
+        mapId: 'DEMO_MAP_ID', // Replace with your actual Map ID if using Cloud-based styling
+      });
 
-        infoWindowRef.current = new google.maps.InfoWindow();
+      infoWindowRef.current = new google.maps.InfoWindow();
 
-        // Clear existing markers
-        markersRef.current.forEach(marker => marker.setMap(null));
-        markersRef.current = [];
+      // Clear existing markers
+      markersRef.current.forEach(marker => {
+        if ('map' in marker) {
+          // AdvancedMarkerElement
+          (marker as google.maps.marker.AdvancedMarkerElement).map = null;
+        } else {
+          // Regular Marker
+          (marker as google.maps.Marker).setMap(null);
+        }
+      });
+      markersRef.current = [];
 
-        devices.forEach((device) => {
-          const marker = new google.maps.Marker({
+      devices.forEach((device) => {
+        let marker;
+        
+        // Try to use AdvancedMarkerElement if available, otherwise fall back to Marker
+        if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+          marker = new google.maps.marker.AdvancedMarkerElement({
+            position: { lat: device.location.latitude, lng: device.location.longitude },
+            map: mapInstance.current,
+            title: device.deviceName,
+            content: document.createElement('div'),
+          });
+          
+          // Set custom marker content
+          const markerContent = marker.content as HTMLElement;
+          markerContent.innerHTML = `
+            <div style="
+              width: 14px; 
+              height: 14px; 
+              background: ${device.online ? '#10B981' : '#EF4444'}; 
+              border: 2px solid #FFFFFF; 
+              border-radius: 50%; 
+              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            "></div>
+          `;
+        } else {
+          // Fallback to regular Marker
+          marker = new google.maps.Marker({
             position: { lat: device.location.latitude, lng: device.location.longitude },
             map: mapInstance.current,
             title: device.deviceName,
             icon: {
               path: google.maps.SymbolPath.CIRCLE,
-              fillColor: device.online ? '#10B981' : '#EF4444', // Green for online, Red for offline
+              fillColor: device.online ? '#10B981' : '#EF4444',
               fillOpacity: 0.9,
               strokeColor: '#FFFFFF',
               strokeWeight: 2,
               scale: 7,
             },
           });
+        }
 
-          marker.addListener('click', () => {
-            onDeviceSelect(device);
-            if (infoWindowRef.current && mapInstance.current) {
-              infoWindowRef.current.setContent(`
-                <div style="padding: 8px;">
-                  <h3 style="margin: 0 0 5px 0; font-size: 16px; color: #333;">${device.deviceName}</h3>
-                  <p style="margin: 0; font-size: 12px; color: #666;">Status: <strong>${device.online ? 'Online' : 'Offline'}</strong></p>
-                  <p style="margin: 0; font-size: 12px; color: #666;">Battery: ${device.batteryLevel}% ${device.charging ? '⚡' : ''}</p>
-                  <p style="margin: 0; font-size: 12px; color: #666;">Last Seen: ${formatDateTimePST(device.lastSeen)}</p>
-                </div>
-              `);
-              infoWindowRef.current.open(mapInstance.current, marker);
-            }
-          });
-          markersRef.current.push(marker);
+        marker.addListener('click', () => {
+          onDeviceSelect(device);
+          if (infoWindowRef.current && mapInstance.current) {
+            infoWindowRef.current.setContent(`
+              <div style="padding: 8px;">
+                <h3 style="margin: 0 0 5px 0; font-size: 16px; color: #333;">${device.deviceName}</h3>
+                <p style="margin: 0; font-size: 12px; color: #666;">Status: <strong>${device.online ? 'Online' : 'Offline'}</strong></p>
+                <p style="margin: 0; font-size: 12px; color: #666;">Battery: ${device.batteryLevel}% ${device.charging ? '⚡' : ''}</p>
+                <p style="margin: 0; font-size: 12px; color: #666;">Last Seen: ${formatDateTimePST(device.lastSeen)}</p>
+              </div>
+            `);
+            infoWindowRef.current.open(mapInstance.current, marker);
+          }
         });
-      }
-    }).catch((e) => {
-      console.error('Error loading Google Maps API: ', e);
-    });
+        markersRef.current.push(marker);
+      });
+    }
 
     return () => {
       // Cleanup markers and info window
-      markersRef.current.forEach(marker => marker.setMap(null));
+      markersRef.current.forEach(marker => {
+        if ('map' in marker) {
+          // AdvancedMarkerElement
+          (marker as google.maps.marker.AdvancedMarkerElement).map = null;
+        } else {
+          // Regular Marker
+          (marker as google.maps.Marker).setMap(null);
+        }
+      });
       markersRef.current = [];
       if (infoWindowRef.current) {
         infoWindowRef.current.close();
         infoWindowRef.current = null;
       }
     };
-  }, [devices, center, zoom, onDeviceSelect]);
+  }, [isLoaded, devices, center, zoom, onDeviceSelect]);
 
   useEffect(() => {
     if (selectedDevice && infoWindowRef.current && mapInstance.current) {
-      const marker = markersRef.current.find(m => m.getTitle() === selectedDevice.deviceName);
+      const marker = markersRef.current.find(m => {
+        if ('title' in m) {
+          return m.title === selectedDevice.deviceName;
+        } else {
+          return m.getTitle() === selectedDevice.deviceName;
+        }
+      });
       if (marker) {
-        mapInstance.current.setCenter(marker.getPosition() as google.maps.LatLng);
+        const position = 'position' in marker ? marker.position : (marker as google.maps.Marker).getPosition();
+        mapInstance.current.setCenter(position as google.maps.LatLng);
         infoWindowRef.current.setContent(`
           <div style="padding: 8px;">
             <h3 style="margin: 0 0 5px 0; font-size: 16px; color: #333;">${selectedDevice.deviceName}</h3>

@@ -28,12 +28,13 @@ export function LocationTrackingFixed({
   selectedDate, 
   onDateSelect 
 }: LocationTrackingFixedProps) {
-  console.log('🎯 LocationTrackingFixed render:', {
-    timeRange,
-    selectedDate,
-    hasOnDateSelect: !!onDateSelect,
-    deviceId: device?.deviceId
-  });
+  // Reduced logging for production performance
+  // console.log('🎯 LocationTrackingFixed render:', {
+  //   timeRange,
+  //   selectedDate,
+  //   hasOnDateSelect: !!onDateSelect,
+  //   deviceId: device?.deviceId
+  // });
   const [locationData, setLocationData] = useState<LocationData[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -84,21 +85,57 @@ export function LocationTrackingFixed({
 
     locations.forEach((location, index) => {
       try {
-        const marker = new google.maps.Marker({
-          position: { lat: location.latitude, lng: location.longitude },
-          map: mapInstance,
-          title: `Location ${index + 1}`,
-          icon: {
-            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="8" fill="#3B82F6" stroke="white" stroke-width="2"/>
-                <circle cx="12" cy="12" r="3" fill="white"/>
-              </svg>
-            `),
-            scaledSize: new google.maps.Size(24, 24),
-            anchor: new google.maps.Point(12, 12)
-          }
-        });
+        let marker;
+        
+        // Try to use AdvancedMarkerElement if available, otherwise fall back to Marker
+        if (google.maps.marker && google.maps.marker.AdvancedMarkerElement) {
+          marker = new google.maps.marker.AdvancedMarkerElement({
+            position: { lat: location.latitude, lng: location.longitude },
+            map: mapInstance,
+            title: `Location ${index + 1}`,
+            content: document.createElement('div'),
+          });
+          
+          // Set custom marker content
+          const markerContent = marker.content as HTMLElement;
+          markerContent.innerHTML = `
+            <div style="
+              width: 24px; 
+              height: 24px; 
+              background: #3B82F6; 
+              border: 2px solid white; 
+              border-radius: 50%; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            ">
+              <div style="
+                width: 8px; 
+                height: 8px; 
+                background: white; 
+                border-radius: 50%;
+              "></div>
+            </div>
+          `;
+        } else {
+          // Fallback to regular Marker
+          marker = new google.maps.Marker({
+            position: { lat: location.latitude, lng: location.longitude },
+            map: mapInstance,
+            title: `Location ${index + 1}`,
+            icon: {
+              url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="8" fill="#3B82F6" stroke="white" stroke-width="2"/>
+                  <circle cx="12" cy="12" r="3" fill="white"/>
+                </svg>
+              `),
+              scaledSize: new google.maps.Size(24, 24),
+              anchor: new google.maps.Point(12, 12)
+            }
+          });
+        }
 
         marker.addListener('click', () => {
           console.log('📍 Marker clicked:', location);

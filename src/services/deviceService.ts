@@ -32,19 +32,10 @@ export class DeviceService {
     console.log('🔍 Firebase project ID:', db.app.options.projectId);
     console.log('🔍 Firebase database ID:', db.app.options.databaseURL);
     
-    // Check multiple possible collection names
-    const possibleCollections = [
-      'devices',
-      'device_heartbeats', 
-      'heartbeats',
-      'fleet_devices',
-      'tablet_data',
-      'device_data',
-      'fleet_data',
-      'android_devices'
-    ];
+    // Only check collections we have permission to access
+    const allowedCollections = ['devices'];
     
-    for (const collectionName of possibleCollections) {
+    for (const collectionName of allowedCollections) {
       try {
         console.log(`🔍 Checking collection: ${collectionName}`);
         const collectionRef = collection(db, collectionName);
@@ -63,31 +54,29 @@ export class DeviceService {
       }
     }
     
-    // Also try to check the specific device we know exists in different possible locations
+    // Check the specific device we know exists
     const knownDeviceId = 'a45bf34bff4d8e66';
-    console.log(`🔍 Checking for known device ${knownDeviceId} in different locations...`);
+    console.log(`🔍 Checking for known device ${knownDeviceId}...`);
     
-    for (const collectionName of possibleCollections) {
-      try {
-        const deviceRef = doc(db, collectionName, knownDeviceId);
-        const deviceSnap = await getDoc(deviceRef);
-        console.log(`🔍 Device ${knownDeviceId} in ${collectionName}:`, deviceSnap.exists());
+    try {
+      const deviceRef = doc(db, 'devices', knownDeviceId);
+      const deviceSnap = await getDoc(deviceRef);
+      console.log(`🔍 Device ${knownDeviceId} in devices:`, deviceSnap.exists());
+      
+      if (deviceSnap.exists()) {
+        console.log(`📄 Device data in devices:`, deviceSnap.data());
         
-        if (deviceSnap.exists()) {
-          console.log(`📄 Device data in ${collectionName}:`, deviceSnap.data());
-          
-          // Also check for state subcollection
-          const stateRef = doc(db, collectionName, knownDeviceId, 'state', 'current');
-          const stateSnap = await getDoc(stateRef);
-          console.log(`🔍 State subcollection in ${collectionName}:`, stateSnap.exists());
-          
-          if (stateSnap.exists()) {
-            console.log(`📄 State data in ${collectionName}:`, stateSnap.data());
-          }
+        // Also check for state subcollection
+        const stateRef = doc(db, 'devices', knownDeviceId, 'state', 'current');
+        const stateSnap = await getDoc(stateRef);
+        console.log(`🔍 State subcollection in devices:`, stateSnap.exists());
+        
+        if (stateSnap.exists()) {
+          console.log(`📄 State data in devices:`, stateSnap.data());
         }
-      } catch (error) {
-        console.log(`❌ Error checking device in ${collectionName}:`, error);
       }
+    } catch (error) {
+      console.log(`❌ Error checking device in devices:`, error);
     }
     
     // Let's also check if there are any subcollections in the devices collection

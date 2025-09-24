@@ -19,8 +19,8 @@ interface LocationDataCache {
   [key: string]: CacheEntry;
 }
 
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-const MAX_CACHE_SIZE = 50; // Maximum number of cached entries
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes - increased for better performance
+const MAX_CACHE_SIZE = 100; // Maximum number of cached entries - increased for better UX
 
 export function useLocationDataCache() {
   const [cache, setCache] = useState<LocationDataCache>({});
@@ -80,7 +80,9 @@ export function useLocationDataCache() {
     setLoading(prev => new Set(prev).add(cacheKey));
 
     try {
-      console.log('🌐 Fetching fresh data for:', cacheKey);
+      if (import.meta.env.DEV) {
+        console.log('🌐 Fetching fresh data for:', cacheKey);
+      }
       
       // Build URL
       let url = `/api/analytics/device/${deviceId}/locations?deviceId=${deviceId}&timeRange=${timeRange}`;
@@ -106,7 +108,9 @@ export function useLocationDataCache() {
         }
       }));
 
-      console.log('💾 Data cached for:', cacheKey);
+      if (import.meta.env.DEV) {
+        console.log('💾 Data cached for:', cacheKey);
+      }
       return data;
     } catch (error) {
       console.error('❌ Error fetching location data:', error);
