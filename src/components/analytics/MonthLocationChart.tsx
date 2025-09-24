@@ -52,6 +52,12 @@ export function MonthLocationChart({
         }
 
         const data = await response.json();
+        console.log('📅 MonthLocationChart data received:', {
+          daysLength: data.days?.length || 0,
+          sampleDay: data.days?.[0],
+          allDays: data.days,
+          hasDataDays: data.days?.filter((day: any) => day.hasData).length || 0
+        });
         setMonthData(data.days || []);
       } catch (err) {
         console.error('Error fetching month location data:', err);
@@ -247,7 +253,17 @@ export function MonthLocationChart({
                           : 'hover:bg-gray-50 border-gray-200'
                         : 'opacity-30 border-gray-100'
                     }`}
-                    onClick={() => day.hasData && onDayClick?.(day.date)}
+                    onClick={() => {
+                      console.log('📅 Day clicked:', { 
+                        date: day.date, 
+                        hasData: day.hasData, 
+                        onDayClick: !!onDayClick,
+                        dayData: day
+                      });
+                      if (day.hasData && onDayClick) {
+                        onDayClick(day.date);
+                      }
+                    }}
                   >
                     <div className="flex flex-col justify-between h-full">
                       <div className="flex items-center justify-between">

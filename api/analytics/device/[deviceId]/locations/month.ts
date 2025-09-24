@@ -1,10 +1,10 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+// Vercel serverless function - no Next.js types needed
 import { BigQuery } from '@google-cloud/bigquery';
 import dotenv from 'dotenv';
 
 dotenv.config({ path: '.env.local' });
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: any, res: any) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -74,14 +74,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const targetTable = 'heartbeats';
     const projectId = 'frontseat-admin';
 
-    // Build BigQuery query for monthly location data aggregated by day
+    // Build BigQuery query for monthly location data - first get raw data
     const query = `
       SELECT
-        DATE(location_timestamp, "America/Los_Angeles") as date,
-        COUNT(*) as location_count,
-        AVG(location_accuracy) as avg_accuracy,
-        FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', DATETIME(MIN(location_timestamp), "America/Los_Angeles")) as first_location,
-        FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', DATETIME(MAX(location_timestamp), "America/Los_Angeles")) as last_location
+        latitude,
+        longitude,
+        FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', DATETIME(location_timestamp, "America/Los_Angeles")) as location_timestamp,
+        location_accuracy,
+        battery_level,
+        device_id,
+        device_name
       FROM
         \`${projectId}.${targetDataset}.${targetTable}\`
       WHERE
@@ -89,11 +91,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         AND latitude IS NOT NULL
         AND longitude IS NOT NULL
         AND location_timestamp >= PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S %Z', CONCAT(@startDate, ' 00:00:00 America/Los_Angeles'))
-        AND location_timestamp < PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S %Z', CONCAT(FORMAT_DATE('%Y-%m-%d', DATE_ADD(PARSE_DATE('%Y-%m-%d', @endDate), INTERVAL 1 DAY)), ' 00:00:00 America/Los_Angeles'))
-      GROUP BY
-        DATE(location_timestamp, "America/Los_Angeles")
+        AND location_timestamp <= PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S %Z', CONCAT(@endDate, ' 23:59:59 America/Los_Angeles'))
       ORDER BY
-        date ASC
+        location_timestamp ASC
     `;
 
     const options = {
@@ -115,8 +115,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const [rows] = await bigquery.query(options);
 
     console.log('📍 Month location data fetched:', {
-      totalDays: rows.length,
-      sampleDay: rows[0]
+      totalRows: rows.length,
+      sampleRow: rows[0],
+      allRows: rows.slice(0, 5),
+      query: query,
+      params: options.params
+    });
+
+    // Group data by day
+    const dailyData: { [key: string]: any[] } = {};
+    rows.forEach((row: any) => {
+      const date = row.location_timestamp.split('T')[0]; // Extract date part
+      if (!dailyData[date]) {
+        dailyData[date] = [];
+      }
+      dailyData[date].push(row);
+    });
+
+    console.log('📅 Daily data grouped:', {
+      dailyKeys: Object.keys(dailyData),
+      sampleDayData: dailyData[Object.keys(dailyData)[0]]?.slice(0, 3)
     });
 
     // Generate calendar data for the month
@@ -161,21 +179,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     for (let day = 1; day <= lastDayOfMonth.getDate(); day++) {
       const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       
-      const dayData = rows.find((row: any) => row.date === dateStr);
+      const dayData = dailyData[dateStr];
       const isToday = today.getFullYear() === currentYear && 
                      today.getMonth() === currentMonth && 
                      today.getDate() === day;
       
-      if (dayData) {
-        const timeSpan = new Date(dayData.last_location).getTime() - new Date(dayData.first_location).getTime();
+      if (dayData && dayData.length > 0) {
+        const locationCount = dayData.length;
+        const avgAccuracy = dayData.reduce((sum: number, row: any) => sum + (row.location_accuracy || 0), 0) / locationCount;
+        
+        // Calculate time span
+        const timestamps = dayData.map((row: any) => new Date(row.location_timestamp).getTime());
+        const timeSpan = Math.max(...timestamps) - Math.min(...timestamps);
         const timeSpanHours = timeSpan / (1000 * 60 * 60);
+        
+        // Simple distance calculation (could be improved)
+        const totalDistance = Math.max(0, locationCount * 0.1);
         
         days.push({
           date: dateStr,
           dayOfMonth: day,
-          locationCount: parseInt(dayData.location_count),
-          totalDistance: Math.max(0, dayData.location_count * 0.1), // Simplified distance calculation
-          avgAccuracy: parseFloat(dayData.avg_accuracy) || 0,
+          locationCount,
+          totalDistance,
+          avgAccuracy,
           timeSpan: timeSpanHours,
           hasData: true,
           isCurrentMonth: true,

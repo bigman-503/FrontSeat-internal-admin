@@ -1,10 +1,9 @@
-import { NextApiRequest, NextApiResponse } from 'next';
 import { BigQuery } from '@google-cloud/bigquery';
 import dotenv from 'dotenv';
 
 dotenv.config({ path: '.env.local' });
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: any, res: any) {
   console.log('🚀 Location API handler called:', {
     method: req.method,
     url: req.url,

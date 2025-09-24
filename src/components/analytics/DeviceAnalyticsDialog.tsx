@@ -19,7 +19,7 @@ import { useUptimeData } from '@/hooks/useUptimeData';
 import { SimpleUptimeChart } from './SimpleUptimeChart';
 import { WeekUptimeChart } from './WeekUptimeChart';
 import { MonthUptimeChart } from './MonthUptimeChart';
-import { LocationTrackingSimple } from './LocationTrackingSimple';
+import { LocationTrackingFixed } from './LocationTrackingFixed';
 import { LoadingState } from './LoadingState';
 import { ErrorState } from './ErrorState';
 
@@ -384,7 +384,7 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
                   </div>
                   
                   {/* Location Tracking Component */}
-                  <LocationTrackingSimple
+                  <LocationTrackingFixed
                     device={device}
                     timeRange={timeRange}
                     selectedDate={selectedDate}
