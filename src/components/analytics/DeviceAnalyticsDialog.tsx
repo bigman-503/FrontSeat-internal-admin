@@ -32,7 +32,7 @@ interface DeviceAnalyticsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnalyticsDialogProps) {
+export const DeviceAnalyticsDialog = React.memo(function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnalyticsDialogProps) {
   // Simple chart controls
   const [timeRange, setTimeRange] = React.useState<string>('24h');
   const [selectedDate, setSelectedDate] = React.useState<string | undefined>(undefined);
@@ -129,35 +129,9 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
     const utcStart = startOfDayPacific;
     const utcEnd = endOfDayPacific;
     
-    console.log('🔍 Filtering day data (corrected):', {
-      selectedDate,
-      startOfDayPacific: startOfDayPacific.toISOString(),
-      endOfDayPacific: endOfDayPacific.toISOString(),
-      utcStart: utcStart.toISOString(),
-      utcEnd: utcEnd.toISOString(),
-      dataLength: data.length
-    });
-    
     const filteredData = data.filter(point => {
       const pointDate = new Date(point.time);
-      const isInRange = pointDate >= utcStart && pointDate <= utcEnd;
-      
-      if (isInRange) {
-        console.log('✅ Found matching point:', {
-          pointTime: point.time,
-          pointDate: pointDate.toISOString(),
-          isOnline: point.isOnline,
-          heartbeatCount: point.heartbeatCount
-        });
-      }
-      
-      return isInRange;
-    });
-    
-    console.log('📊 Filtered day data result:', {
-      originalLength: data.length,
-      filteredLength: filteredData.length,
-      onlineCount: filteredData.filter(p => p.isOnline === 1).length
+      return pointDate >= utcStart && pointDate <= utcEnd;
     });
     
     return filteredData;
@@ -180,20 +154,17 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
     };
   }, []);
 
-  // Debug logging
-  console.log('🔍 DeviceAnalyticsDialog data:', {
-    uptimeDataLength: uptimeData.length,
-    timeRange: timeRange,
-    timeInterval: 15,
-    sampleUptimeData: uptimeData.slice(0, 3),
-    isMockData,
-    dataSource,
-    viewMode: 'overview',
-    selectedDate: selectedDate,
-    dailySummariesLength: dailySummaries.length,
-    monthDataLength: monthData.length,
-    filteredDayDataLength: selectedDate ? 'calculating...' : 0
-  });
+  // Memoize expensive calculations
+  const filteredDayData = React.useMemo(() => {
+    if (!selectedDate || !uptimeData) return [];
+    return getFilteredDayData(uptimeData, selectedDate);
+  }, [uptimeData, selectedDate, getFilteredDayData]);
+
+  const dayDateRange = React.useMemo(() => {
+    if (!selectedDate) return { startDate: '', endDate: '' };
+    const range = getDayDateRange(selectedDate);
+    return { startDate: range.start, endDate: range.end };
+  }, [selectedDate, getDayDateRange]);
 
 
   if (!device) return null;
@@ -228,6 +199,7 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
           {error && (
             <ErrorState
               error={error}
+              onRetry={() => window.location.reload()}
             />
           )}
 
@@ -354,10 +326,10 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
                     </CardHeader>
                     <CardContent>
                       <SimpleUptimeChart
-                        data={getFilteredDayData(uptimeData, selectedDate)}
+                        data={filteredDayData}
                         timeRange="24h"
                         timeInterval={15}
-                        dateRange={getDayDateRange(selectedDate)}
+                        dateRange={dayDateRange}
                         isHistoricalView={true}
                         selectedDate={selectedDate}
                       />
@@ -434,4 +406,4 @@ export function DeviceAnalyticsDialog({ device, open, onOpenChange }: DeviceAnal
       </DialogContent>
     </Dialog>
   );
-}
+});

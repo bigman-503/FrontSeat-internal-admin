@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -84,18 +84,24 @@ export default function Devices() {
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const { devices, loading, error, refetch } = useDevices();
 
-  const filteredDevices = devices.filter((device) => {
-    const matchesSearch = device.deviceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         device.deviceId.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || device.status === statusFilter;
-    const matchesPlatform = platformFilter === "all" || device.platform === platformFilter;
-    
-    return matchesSearch && matchesStatus && matchesPlatform;
-  });
+  const filteredDevices = useMemo(() => {
+    return devices.filter((device) => {
+      const matchesSearch = device.deviceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           device.deviceId.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === "all" || device.status === statusFilter;
+      const matchesPlatform = platformFilter === "all" || device.platform === platformFilter;
+      
+      return matchesSearch && matchesStatus && matchesPlatform;
+    });
+  }, [devices, searchTerm, statusFilter, platformFilter]);
 
-  const onlineDevices = devices.filter(d => d.online).length;
-  const lowBatteryDevices = devices.filter(d => d.batteryLevel < 20).length;
-  const offlineDevices = devices.filter(d => !d.online).length;
+  const deviceStats = useMemo(() => {
+    const onlineDevices = devices.filter(d => d.online).length;
+    const lowBatteryDevices = devices.filter(d => d.batteryLevel < 20).length;
+    const offlineDevices = devices.filter(d => !d.online).length;
+    
+    return { onlineDevices, lowBatteryDevices, offlineDevices };
+  }, [devices]);
 
   const handleDeviceClick = (device: Device) => {
     setSelectedDevice(device);
@@ -172,7 +178,7 @@ export default function Devices() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Online Devices</p>
-                <p className="text-2xl font-bold text-green-600">{onlineDevices}</p>
+                <p className="text-2xl font-bold text-green-600">{deviceStats.onlineDevices}</p>
               </div>
               <div className="h-12 w-12 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
                 <CheckCircle className="h-6 w-6 text-green-600" />
@@ -186,7 +192,7 @@ export default function Devices() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Low Battery</p>
-                <p className="text-2xl font-bold text-yellow-600">{lowBatteryDevices}</p>
+                <p className="text-2xl font-bold text-yellow-600">{deviceStats.lowBatteryDevices}</p>
               </div>
               <div className="h-12 w-12 bg-yellow-100 dark:bg-yellow-900/20 rounded-full flex items-center justify-center">
                 <Battery className="h-6 w-6 text-yellow-600" />
@@ -200,7 +206,7 @@ export default function Devices() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Offline Devices</p>
-                <p className="text-2xl font-bold text-red-600">{offlineDevices}</p>
+                <p className="text-2xl font-bold text-red-600">{deviceStats.offlineDevices}</p>
               </div>
               <div className="h-12 w-12 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
                 <XCircle className="h-6 w-6 text-red-600" />

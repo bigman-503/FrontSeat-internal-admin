@@ -26,8 +26,6 @@ export function useDevices(): UseDevicesReturn {
   const [error, setError] = useState<Error | null>(null);
 
   const handleDevicesUpdate = useCallback((updatedDevices: Device[]) => {
-    console.log('📊 useDevices: Received devices update:', updatedDevices.length, 'devices');
-    
     setDevices(updatedDevices);
     setFleetMetrics(DeviceService.calculateFleetMetrics(updatedDevices));
     setLoading(false);
@@ -46,7 +44,6 @@ export function useDevices(): UseDevicesReturn {
   }, []);
 
   useEffect(() => {
-    console.log('🔄 useDevices: Setting up device listener...');
     let unsubscribe: (() => void) | undefined;
 
     const setupListener = async () => {
@@ -54,12 +51,10 @@ export function useDevices(): UseDevicesReturn {
         // First, check what devices are available
         await DeviceService.checkAvailableDevices();
         
-        console.log('🔄 useDevices: Calling DeviceService.subscribeToDevices...');
         unsubscribe = DeviceService.subscribeToDevices(
           handleDevicesUpdate,
           handleError
         );
-        console.log('✅ useDevices: Successfully set up listener');
       } catch (err) {
         console.error('❌ useDevices: Error setting up listener:', err);
         handleError(err as Error);
@@ -69,10 +64,11 @@ export function useDevices(): UseDevicesReturn {
     setupListener();
 
     return () => {
-      console.log('🔄 useDevices: Cleaning up listener...');
       if (unsubscribe) {
         unsubscribe();
       }
+      // Reset tracking to prevent memory leaks
+      DeviceService.resetTracking();
     };
   }, [handleDevicesUpdate, handleError]);
 

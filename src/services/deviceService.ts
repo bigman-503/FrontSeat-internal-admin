@@ -24,25 +24,37 @@ const DEVICE_STATE_SUBCOLLECTION = 'state';
 const CURRENT_DOCUMENT = 'current';
 
 export class DeviceService {
+  private static debounceTimer: NodeJS.Timeout | null = null;
+  private static isDevelopment = process.env.NODE_ENV === 'development';
+  private static lastProcessedData: any = null;
+  private static lastProcessedTime = 0;
+  private static heartbeatCount = 0;
+
   /**
    * Check what devices exist in Firestore
    */
   static async checkAvailableDevices(): Promise<void> {
-    console.log('🔍 DeviceService: Checking available devices...');
-    console.log('🔍 Firebase project ID:', db.app.options.projectId);
-    console.log('🔍 Firebase database ID:', db.app.options.databaseURL);
+    if (this.isDevelopment) {
+      console.log('🔍 DeviceService: Checking available devices...');
+      console.log('🔍 Firebase project ID:', db.app.options.projectId);
+      console.log('🔍 Firebase database ID:', db.app.options.databaseURL);
+    }
     
     // Only check collections we have permission to access
     const allowedCollections = ['devices'];
     
     for (const collectionName of allowedCollections) {
       try {
-        console.log(`🔍 Checking collection: ${collectionName}`);
+        if (this.isDevelopment) {
+          console.log(`🔍 Checking collection: ${collectionName}`);
+        }
         const collectionRef = collection(db, collectionName);
         const snapshot = await getDocs(collectionRef);
-        console.log(`📁 Collection "${collectionName}": ${snapshot.size} documents`);
+        if (this.isDevelopment) {
+          console.log(`📁 Collection "${collectionName}": ${snapshot.size} documents`);
+        }
         
-        if (snapshot.size > 0) {
+        if (snapshot.size > 0 && this.isDevelopment) {
           console.log(`✅ Found data in collection: ${collectionName}`);
           snapshot.forEach((doc) => {
             console.log(`📄 Document ID: ${doc.id}`);
@@ -50,20 +62,26 @@ export class DeviceService {
           });
         }
       } catch (error) {
-        console.log(`❌ Collection "${collectionName}": Error or doesn't exist`);
+        if (this.isDevelopment) {
+          console.log(`❌ Collection "${collectionName}": Error or doesn't exist`);
+        }
       }
     }
     
     // Check the specific device we know exists
     const knownDeviceId = 'a45bf34bff4d8e66';
-    console.log(`🔍 Checking for known device ${knownDeviceId}...`);
+    if (this.isDevelopment) {
+      console.log(`🔍 Checking for known device ${knownDeviceId}...`);
+    }
     
     try {
       const deviceRef = doc(db, 'devices', knownDeviceId);
       const deviceSnap = await getDoc(deviceRef);
-      console.log(`🔍 Device ${knownDeviceId} in devices:`, deviceSnap.exists());
+      if (this.isDevelopment) {
+        console.log(`🔍 Device ${knownDeviceId} in devices:`, deviceSnap.exists());
+      }
       
-      if (deviceSnap.exists()) {
+      if (deviceSnap.exists() && this.isDevelopment) {
         console.log(`📄 Device data in devices:`, deviceSnap.data());
         
         // Also check for state subcollection
@@ -76,84 +94,75 @@ export class DeviceService {
         }
       }
     } catch (error) {
-      console.log(`❌ Error checking device in devices:`, error);
+      if (this.isDevelopment) {
+        console.log(`❌ Error checking device in devices:`, error);
+      }
     }
     
     // Let's also check if there are any subcollections in the devices collection
-    console.log(`🔍 Checking for subcollections in devices collection...`);
+    if (this.isDevelopment) {
+      console.log(`🔍 Checking for subcollections in devices collection...`);
+    }
     try {
       const devicesRef = collection(db, 'devices');
       const devicesSnapshot = await getDocs(devicesRef);
-      console.log(`📁 Devices collection has ${devicesSnapshot.size} documents`);
+      if (this.isDevelopment) {
+        console.log(`📁 Devices collection has ${devicesSnapshot.size} documents`);
+      }
       
-      if (devicesSnapshot.size > 0) {
+      if (devicesSnapshot.size > 0 && this.isDevelopment) {
         devicesSnapshot.forEach((doc) => {
           console.log(`📄 Document in devices: ${doc.id}`, doc.data());
         });
-      } else {
+      } else if (this.isDevelopment) {
         console.log(`⚠️ Devices collection is empty. Let's check if there are any subcollections...`);
         
-        // Try to check if there are any subcollections by looking for common patterns
-        const subcollectionPatterns = [
-          'devices/a45bf34bff4d8e66/state/current',
-          'devices/a45bf34bff4d8e66/heartbeat/current',
-          'devices/a45bf34bff4d8e66/data/current',
-          'devices/a45bf34bff4d8e66/status/current',
-          'devices/a45bf34bff4d8e66/info/current'
-        ];
-        
-        for (const pattern of subcollectionPatterns) {
-          try {
-            const parts = pattern.split('/');
-            const ref = doc(db, parts[0], parts[1], parts[2], parts[3]);
-            const snap = await getDoc(ref);
-            console.log(`🔍 Pattern ${pattern}:`, snap.exists());
+        // Check the known working pattern first
+        const knownStatePattern = 'devices/a45bf34bff4d8e66/state/current';
+        try {
+          const parts = knownStatePattern.split('/');
+          const ref = doc(db, parts[0], parts[1], parts[2], parts[3]);
+          const snap = await getDoc(ref);
+          if (this.isDevelopment) {
+            console.log(`🔍 Pattern ${knownStatePattern}:`, snap.exists());
             if (snap.exists()) {
-              console.log(`📄 Data at ${pattern}:`, snap.data());
+              console.log(`📄 Data at ${knownStatePattern}:`, snap.data());
+              console.log(`✅ Found working data pattern: ${knownStatePattern}`);
             }
-          } catch (error) {
-            console.log(`❌ Pattern ${pattern}: Error`);
+          }
+        } catch (error) {
+          if (this.isDevelopment) {
+            console.log(`❌ Pattern ${knownStatePattern}: Error`);
           }
         }
         
-        // Let's also try to check if the device exists as a direct document with different names
-        const deviceVariations = [
-          'a45bf34bff4d8e66',
-          'device_a45bf34bff4d8e66',
-          'SCM-AL09',
-          'device_SCM-AL09'
-        ];
-        
-        console.log(`🔍 Checking device variations in devices collection...`);
-        for (const deviceId of deviceVariations) {
-          try {
-            const deviceRef = doc(db, 'devices', deviceId);
-            const deviceSnap = await getDoc(deviceRef);
-            console.log(`🔍 Device ${deviceId} in devices:`, deviceSnap.exists());
-            if (deviceSnap.exists()) {
-              console.log(`📄 Device data for ${deviceId}:`, deviceSnap.data());
-            }
-          } catch (error) {
-            console.log(`❌ Error checking device ${deviceId}:`, error);
-          }
+        // Skip checking device variations since we found the working pattern
+        if (this.isDevelopment) {
+          console.log(`✅ Using known working data pattern: ${knownStatePattern}`);
         }
       }
     } catch (error) {
-      console.log(`❌ Error checking devices subcollections:`, error);
+      if (this.isDevelopment) {
+        console.log(`❌ Error checking devices subcollections:`, error);
+      }
     }
     
-    // If we still haven't found any data, let's create some test data for demonstration
-    console.log(`🔍 No real data found. Creating test data for demonstration...`);
-    try {
-      const testDeviceRef = doc(db, 'devices', 'test-device-001');
-      const testDeviceSnap = await getDoc(testDeviceRef);
-      
-      if (!testDeviceSnap.exists()) {
-        console.log(`📝 Creating test device data...`);
-        // We'll create this in the next step
-      }
-    } catch (error) {
-      console.log(`❌ Error creating test data:`, error);
+    // Real data found, no need for test data
+    if (this.isDevelopment) {
+      console.log(`✅ Real device data found, skipping test data creation`);
+    }
+  }
+
+  /**
+   * Reset tracking variables (useful for cleanup)
+   */
+  static resetTracking(): void {
+    this.lastProcessedData = null;
+    this.lastProcessedTime = 0;
+    this.heartbeatCount = 0;
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
     }
   }
 
@@ -165,28 +174,69 @@ export class DeviceService {
     onUpdate: (devices: Device[]) => void,
     onError?: (error: Error) => void
   ): () => void {
-    console.log('🔍 DeviceService: Setting up Firestore listener...');
-    console.log('🔍 Collection:', DEVICES_COLLECTION);
+    if (this.isDevelopment) {
+      console.log('🔍 DeviceService: Setting up Firestore listener...');
+      console.log('🔍 Collection:', DEVICES_COLLECTION);
+    }
 
     // Since we know the data is in devices/a45bf34bff4d8e66/state/current,
     // let's listen directly to that specific document
     const knownDeviceId = 'a45bf34bff4d8e66';
     const stateRef = doc(db, DEVICES_COLLECTION, knownDeviceId, DEVICE_STATE_SUBCOLLECTION, CURRENT_DOCUMENT);
     
-    console.log('🔍 Listening to specific state document:', stateRef.path);
+    if (this.isDevelopment) {
+      console.log('🔍 Listening to specific state document:', stateRef.path);
+    }
     
     return onSnapshot(
       stateRef,
       (snapshot: DocumentSnapshot) => {
-        console.log('📊 DeviceService: Received state document update');
-        console.log('📊 DeviceService: Document exists:', snapshot.exists());
+        // Increment heartbeat counter
+        this.heartbeatCount++;
         
-        try {
-          const devices: Device[] = [];
-          
-          if (snapshot.exists()) {
-            const data = snapshot.data();
-            console.log('📄 DeviceService: Found state data:', data);
+        // Check if this is a meaningful update
+        const now = Date.now();
+        const data = snapshot.exists() ? snapshot.data() : null;
+        
+        // Only log every 10th heartbeat to reduce console noise
+        const shouldLog = this.heartbeatCount % 10 === 1;
+        
+        // Skip if we processed an update very recently (throttle to max once per 2 seconds)
+        if (now - this.lastProcessedTime < 2000) {
+          if (this.isDevelopment && shouldLog) {
+            console.log(`⏭️ DeviceService: Throttling heartbeat #${this.heartbeatCount} - too soon since last update`);
+          }
+          return;
+        }
+        
+        // Skip if this is the same data we just processed
+        const dataString = JSON.stringify(data);
+        if (dataString === this.lastProcessedData) {
+          if (this.isDevelopment && shouldLog) {
+            console.log(`⏭️ DeviceService: Skipping duplicate data (heartbeat #${this.heartbeatCount})`);
+          }
+          return;
+        }
+        
+        // Clear existing debounce timer
+        if (this.debounceTimer) {
+          clearTimeout(this.debounceTimer);
+        }
+        
+        // Set new debounce timer
+        this.debounceTimer = setTimeout(() => {
+          if (this.isDevelopment) {
+            console.log(`📊 DeviceService: Processing heartbeat #${this.heartbeatCount} (last processed: ${this.heartbeatCount - 1} heartbeats ago)`);
+            console.log('📊 DeviceService: Document exists:', snapshot.exists());
+          }
+        
+          try {
+            const devices: Device[] = [];
+            
+            if (snapshot.exists()) {
+              if (this.isDevelopment) {
+                console.log('📄 DeviceService: Found state data:', data);
+              }
             
             const device: Device = {
               deviceId: data.deviceId || knownDeviceId,
@@ -227,18 +277,30 @@ export class DeviceService {
               lastMaintenance: data.lastMaintenance
             };
             
-            devices.push(device);
-            console.log('✅ DeviceService: Successfully processed device', device.deviceId);
-          } else {
-            console.log('⚠️ DeviceService: State document does not exist');
+              devices.push(device);
+              if (this.isDevelopment) {
+                console.log('✅ DeviceService: Successfully processed device', device.deviceId);
+              }
+            } else {
+              if (this.isDevelopment) {
+                console.log('⚠️ DeviceService: State document does not exist');
+              }
+            }
+            
+            if (this.isDevelopment) {
+              console.log(`✅ DeviceService: Successfully processed ${devices.length} devices (heartbeat #${this.heartbeatCount})`);
+            }
+            
+            // Update tracking variables
+            this.lastProcessedData = dataString;
+            this.lastProcessedTime = now;
+            
+            onUpdate(devices);
+          } catch (error) {
+            console.error('❌ DeviceService: Error processing device data:', error);
+            onError?.(error as Error);
           }
-          
-          console.log('✅ DeviceService: Successfully processed', devices.length, 'devices');
-          onUpdate(devices);
-        } catch (error) {
-          console.error('❌ DeviceService: Error processing device data:', error);
-          onError?.(error as Error);
-        }
+        }, 1000); // 1 second debounce for final processing
       },
       (error) => {
         console.error('❌ DeviceService: Error listening to state document:', error);
@@ -279,22 +341,29 @@ export class DeviceService {
    */
   static calculateFleetMetrics(devices: Device[]): FleetMetrics {
     const totalDevices = devices.length;
+    if (totalDevices === 0) {
+      return {
+        totalDevices: 0,
+        onlineDevices: 0,
+        offlineDevices: 0,
+        lowBatteryDevices: 0,
+        averageBatteryLevel: 0,
+        devicesNeedingMaintenance: 0,
+        averageUptime: 0,
+        lastUpdated: new Date().toISOString()
+      };
+    }
+
     const onlineDevices = devices.filter(d => d.status === 'online').length;
     const offlineDevices = devices.filter(d => d.status === 'offline').length;
     const lowBatteryDevices = devices.filter(d => d.status === 'low_battery').length;
     
-    const averageBatteryLevel = devices.length > 0 
-      ? devices.reduce((sum, d) => sum + d.batteryLevel, 0) / devices.length 
-      : 0;
+    const averageBatteryLevel = devices.reduce((sum, d) => sum + d.batteryLevel, 0) / totalDevices;
     
-    const averageUptime = devices.length > 0 
-      ? devices.reduce((sum, d) => {
-          // Convert uptime from milliseconds to hours
-          const uptimeInHours = d.uptime / (1000 * 60 * 60);
-          console.log(`🔍 Device ${d.deviceId}: Raw uptime ${d.uptime}ms = ${uptimeInHours.toFixed(2)} hours`);
-          return sum + uptimeInHours;
-        }, 0) / devices.length 
-      : 0;
+    const averageUptime = devices.reduce((sum, d) => {
+      // Convert uptime from milliseconds to hours
+      return sum + (d.uptime / (1000 * 60 * 60));
+    }, 0) / totalDevices;
 
     return {
       totalDevices,
