@@ -33,3 +33,4 @@ frontseat-service-account.json
 !tsconfig.json
 !tsconfig.*.json
 .vercel
+

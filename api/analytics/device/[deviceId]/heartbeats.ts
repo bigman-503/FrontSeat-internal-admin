@@ -40,7 +40,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const bigquery = new BigQuery(bigqueryConfig);
 
     // Query for raw heartbeat data
-    // Use a more flexible date range that accounts for timezone differences
     const query = `
       SELECT
         last_seen,
@@ -57,8 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         \`frontseat-admin.frontseat_analytics.heartbeats\`
       WHERE
         (device_id = @deviceId OR device_name = @deviceId)
-        AND last_seen >= TIMESTAMP(@startDate)
-        AND last_seen < TIMESTAMP_ADD(TIMESTAMP(@endDate), INTERVAL 1 DAY)
+        AND DATE(last_seen) BETWEEN @startDate AND @endDate
       ORDER BY
         last_seen ASC
     `;

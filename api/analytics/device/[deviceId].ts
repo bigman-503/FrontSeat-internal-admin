@@ -199,7 +199,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       // Query the heartbeats table for real analytics data
-      // Use a more flexible date range that accounts for timezone differences
       const query = `
         SELECT
           FORMAT_DATE('%Y-%m-%d', DATE(last_seen)) AS date,
@@ -214,8 +213,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           \`${process.env.GOOGLE_CLOUD_PROJECT_ID}.${targetDataset}.${targetTable}\`
         WHERE
           (device_id = @deviceId OR device_name = @deviceId)
-          AND last_seen >= TIMESTAMP(@startDate)
-          AND last_seen < TIMESTAMP_ADD(TIMESTAMP(@endDate), INTERVAL 1 DAY)
+          AND DATE(last_seen) BETWEEN @startDate AND @endDate
         GROUP BY
           date
         ORDER BY
